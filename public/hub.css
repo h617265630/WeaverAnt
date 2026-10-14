@@ -1,0 +1,57 @@
+@import url("/canvas.css");
+.hub-chat {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 20px 24px 15px;
+  margin: 0 0 24px;
+  box-shadow: 0 5px 24px #304b3705;
+}
+.hub-chat .chat-messages {
+  max-height: 290px;
+}
+.hub-chat .chat-welcome {
+  padding: 12px 0 20px;
+}
+.hub-chat .composer {
+  background: #f8faf6;
+}
+.brand {
+  white-space: nowrap;
+}
+.brand small {
+  display: none;
+}
+.chat-msg .text,
+.composer textarea {
+  font-size: 14px;
+  line-height: 1.75;
+}
+.search-result {
+  width: 100%;
+  display: block;
+  text-align: left;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.search-result strong {
+  margin: 0 10px;
+}
+.search-result small {
+  color: var(--muted);
+}
+.search-result p {
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #6b7868;
+  margin: 9px 0 0;
+}
+@media (max-width: 760px) {
+  .hub-chat {
+    padding: 16px;
+  }
+  .hub-chat .dock-label .scope {
+    display: none;
+  }
+}

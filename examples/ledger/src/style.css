@@ -1,0 +1,382 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: #fcfcf9;
+  color: #374734;
+  font:
+    13px/1.6 -apple-system,
+    BlinkMacSystemFont,
+    "PingFang SC",
+    sans-serif;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+main {
+  max-width: 1120px;
+  padding: 0 48px;
+  margin: auto;
+}
+header {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e9ede1;
+}
+.logo {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  color: #405b39;
+  font-size: 18px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.logo > span {
+  font-size: 27px;
+  color: #7f9b70;
+}
+.logo small {
+  font-weight: 400;
+  color: #a5af9c;
+  font-size: 10px;
+  margin-left: 12px;
+}
+.demo-badge {
+  font-size: 9px;
+  background: #f1f3e9;
+  border: 1px solid #e4e9d9;
+  border-radius: 4px;
+  color: #9daa90;
+  padding: 3px 8px;
+}
+.greeting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 31px 0 27px;
+}
+.eyebrow {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #a7b298;
+  margin: 0 0 7px;
+}
+h1 {
+  font-weight: 500;
+  font-size: 27px;
+  letter-spacing: -1px;
+  margin: 0 0 5px;
+}
+.greeting > div > p:last-child {
+  font-size: 11px;
+  color: #9ca98f;
+  margin: 0;
+}
+button {
+  border: 1px solid #dfe5d4;
+  background: white;
+  color: #7c8c6d;
+  padding: 8px 13px;
+  border-radius: 6px;
+}
+.primary {
+  background: #67865a;
+  color: white;
+  border-color: #67865a;
+  font-size: 12px;
+}
+.summary {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 17px;
+}
+article {
+  padding: 22px 23px;
+  border: 1px solid #e4e9db;
+  border-radius: 10px;
+  background: white;
+  position: relative;
+  overflow: hidden;
+}
+article p {
+  display: flex;
+  justify-content: space-between;
+  color: #9caa90;
+  font-size: 11px;
+  margin: 0;
+}
+article p span {
+  font-size: 19px;
+  line-height: 1;
+}
+article h2 {
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: -0.8px;
+  margin: 13px 0 8px;
+}
+article small {
+  font-size: 10px;
+  color: #a6b39a;
+}
+.balance {
+  background: #e9efdf;
+  border-color: #dfe7d3;
+}
+.balance h2 {
+  color: #527543;
+}
+.curve {
+  position: absolute;
+  width: 100px;
+  right: 10px;
+  bottom: 16px;
+  opacity: 0.5;
+}
+.curve svg {
+  fill: none;
+  stroke: #7fa065;
+  stroke-width: 3;
+}
+.green {
+  color: #7f9d70;
+}
+.orange {
+  color: #c0aa83;
+}
+.dot {
+  width: 5px;
+  height: 5px;
+  display: inline-block;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+.green-bg {
+  background: #8aa57a;
+}
+.orange-bg {
+  background: #c8b896;
+}
+.content-grid {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: 22px;
+  margin-top: 25px;
+}
+.transactions,
+.spending {
+  border: 1px solid #e4e9db;
+  border-radius: 10px;
+  padding: 22px;
+  background: white;
+}
+h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.tabs {
+  display: flex;
+  gap: 3px;
+}
+.tabs button {
+  border: 0;
+  padding: 4px 9px;
+  font-size: 10px;
+  color: #a3ad98;
+}
+.tabs button.active {
+  color: #769466;
+  background: #eef3e6;
+}
+.transaction {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid #f0f3ea;
+}
+.transaction:last-child {
+  border: 0;
+}
+.emoji {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  background: #f3f3e9;
+  border-radius: 9px;
+  font-size: 16px;
+}
+.transaction strong {
+  font-size: 11px;
+  font-weight: 500;
+}
+.transaction p {
+  font-size: 9px;
+  color: #a8b49c;
+  margin: 3px 0 0;
+}
+.transaction b {
+  margin-left: auto;
+  font-weight: 500;
+  font-size: 12px;
+}
+.transaction .positive {
+  color: #82a174;
+}
+.donut {
+  margin: 22px auto;
+  width: 133px;
+  height: 133px;
+  border-radius: 50%;
+  background: conic-gradient(#88a186 0 55%, #c3cfad 55% 85%, #e4dec8 85% 100%);
+  display: grid;
+  place-items: center;
+}
+.donut > div {
+  height: 103px;
+  width: 103px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.donut small {
+  font-size: 9px;
+  color: #a1ae94;
+}
+.donut strong {
+  font-weight: 500;
+  font-size: 16px;
+}
+.category {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: #97a58a;
+  margin: 13px 0;
+}
+.category i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.category strong {
+  margin-left: auto;
+  font-weight: 500;
+  color: #7b8b6d;
+}
+footer {
+  font-size: 9px;
+  color: #b2bea7;
+  display: flex;
+  justify-content: space-between;
+  padding: 22px 0;
+}
+footer span {
+  letter-spacing: 1px;
+}
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: #1c2b2155;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.dialog {
+  width: 350px;
+  background: #fcfdf9;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 10px 60px #243a2422;
+}
+.dialog h2 {
+  font-size: 19px;
+  font-weight: 500;
+  margin: 0 0 20px;
+}
+.dialog label {
+  display: block;
+  font-size: 11px;
+  color: #889b7a;
+  margin: 14px 0;
+}
+.dialog input,
+.dialog select {
+  display: block;
+  width: 100%;
+  padding: 9px;
+  margin-top: 6px;
+  border: 1px solid #dce5d2;
+  border-radius: 5px;
+  background: white;
+  color: #49693c;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 22px;
+}
+@media (max-width: 700px) {
+  main {
+    padding: 0 23px;
+  }
+  .logo small {
+    display: none;
+  }
+  header {
+    height: 64px;
+  }
+  .greeting {
+    padding: 23px 0;
+  }
+  h1 {
+    font-size: 23px;
+  }
+  .summary {
+    gap: 10px;
+    grid-template-columns: 1fr 1fr;
+  }
+  .balance {
+    grid-column: 1/-1;
+  }
+  article {
+    padding: 18px;
+  }
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+  .spending {
+    display: none;
+  }
+  .greeting .primary {
+    white-space: nowrap;
+  }
+  .demo-badge {
+    font-size: 8px;
+  }
+  article h2 {
+    font-size: 23px;
+  }
+}

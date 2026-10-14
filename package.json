@@ -1,0 +1,19 @@
+{
+  "name": "wb-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "start": "npm run build && node server/index.mjs",
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "mcp": "node server/mcp.mjs",
+    "config": "node scripts/config.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "playwright test",
+    "check": "node scripts/check.mjs"
+  },
+  "dependencies": { "@modelcontextprotocol/sdk": "^1.32.1", "zod": "^4.6.7", "react": "^19.3.0", "react-dom": "^19.3.0" },
+  "devDependencies": { "@playwright/test": "^1.64.0", "vite": "^8.3.4", "@vitejs/plugin-react": "^6.1.2" }
+}
