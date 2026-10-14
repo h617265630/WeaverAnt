@@ -31,16 +31,32 @@ export function HubChat({
   useEffect(() => {
     if (welcome || !dock.current) return;
     const page = dock.current.closest(".page");
-    const observer = new ResizeObserver(() =>
+    const main = dock.current.closest(".conversation-main");
+    const updateLayout = () => {
       page?.style.setProperty(
         "--dock-height",
         `${dock.current.offsetHeight + 44}px`,
-      ),
-    );
+      );
+      if (main) {
+        const rect = main.getBoundingClientRect();
+        page?.style.setProperty(
+          "--composer-center",
+          `${rect.left + rect.width / 2}px`,
+        );
+        page?.style.setProperty("--composer-width", `${rect.width}px`);
+      }
+    };
+    const observer = new ResizeObserver(updateLayout);
     observer.observe(dock.current);
+    if (main) observer.observe(main);
+    window.addEventListener("resize", updateLayout);
+    updateLayout();
     return () => {
       observer.disconnect();
+      window.removeEventListener("resize", updateLayout);
       page?.style.removeProperty("--dock-height");
+      page?.style.removeProperty("--composer-center");
+      page?.style.removeProperty("--composer-width");
     };
   }, [welcome, hub]);
   useEffect(() => {

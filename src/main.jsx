@@ -46,7 +46,7 @@ function App() {
     [status, setStatus] = useState(null),
     [error, setError] = useState(""),
     [searchOpen, setSearchOpen] = useState(false),
-    [sidebarCollapsed, setSidebarCollapsed] = useState(false),
+    [sidebarCollapsed, setSidebarCollapsed] = useState(true),
     [mobileSidebar, setMobileSidebar] = useState(false),
     [entryMode, setEntryMode] = useState("chat"),
     [entryKey, setEntryKey] = useState(0);
@@ -92,8 +92,10 @@ function App() {
   }, [refresh, refreshStatus, notify]);
   useEffect(() => {
     setMobileSidebar(false);
+    if (/^\/(page|develop)\//.test(path)) setSidebarCollapsed(true);
   }, [path]);
   const newEntry = (mode = "chat") => {
+    setSidebarCollapsed(true);
     setEntryMode(mode);
     setEntryKey((key) => key + 1);
     setMobileSidebar(false);

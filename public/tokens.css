@@ -1,1 +1,1 @@
-:root{--bg:#fafbf8;--ink:#344331;--muted:#8b9882;--green:#58754c;--line:#e3e8dc;--soft:#f0f4ea}
+:root{color-scheme:light;--bg:#fff;--ink:#202020;--muted:#6b6b6b;--accent:#171717;--green:var(--accent);--line:#e5e5e5;--soft:#f5f5f5}

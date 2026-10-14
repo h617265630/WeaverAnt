@@ -1,11 +1,11 @@
 @import url("/canvas.css");
 .hub-chat {
-  background: #fff;
+  background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 20px 24px 15px;
   margin: 0 0 24px;
-  box-shadow: 0 5px 24px #304b3705;
+  box-shadow: 0 5px 24px #44444405;
 }
 .hub-chat .chat-messages {
   max-height: 290px;
@@ -14,7 +14,7 @@
   padding: 12px 0 20px;
 }
 .hub-chat .composer {
-  background: #f8faf6;
+  background: #f9f9f9;
 }
 .brand {
   white-space: nowrap;
@@ -44,7 +44,7 @@
   font-size: 13px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  color: #6b7868;
+  color: #6b6b6b;
   margin: 9px 0 0;
 }
 @media (max-width: 760px) {

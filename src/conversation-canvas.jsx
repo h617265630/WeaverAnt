@@ -3,6 +3,7 @@ import { contentBlocks, safeLink } from "./content-blocks.mjs";
 import { Icon, Button } from "./components";
 import { timeLabel } from "./api";
 import { SelectionThread, useTextSelection } from "./selection-threads";
+import { ThreadLabels } from "./thread-labels";
 
 function Inline({ text }) {
   const parts = String(text).split(
@@ -26,7 +27,6 @@ function Inline({ text }) {
 }
 export const StructuredContent = memo(function StructuredContent({
   text,
-  afterBlock,
   selectable = false,
 }) {
   return (
@@ -138,76 +138,73 @@ export const StructuredContent = memo(function StructuredContent({
               );
             })()}
           </div>
-          {afterBlock?.(index)}
         </div>
       ))}
     </div>
   );
 });
 
-const Message = memo(function Message({
-  message,
-  streaming = false,
-  afterBlock,
-}) {
+const Message = memo(function Message({ message, streaming = false }) {
   const [copied, setCopied] = useState("");
   const user = message.role === "user";
   return (
-    <article
-      data-message-id={message.id}
-      className={`chat-msg canvas-message ${user ? "user" : "assistant"} ${streaming ? "is-streaming" : ""}`}
-    >
-      <div className="canvas-message-head">
-        <span className="canvas-role">
-          <Icon name={user ? "chat" : "spark"} />
-          {user ? "你的提问" : "AI 回复"}
-          {streaming && (
-            <span className="tag">
-              <span className="status-dot connecting" />
-              实时生成中
-            </span>
-          )}
-          {message.partial && <span className="tag amber">未完成</span>}
-        </span>
-        {message.at && <time>{timeLabel(message.at)}</time>}
-      </div>
-      {user ? (
-        <div className="content-block-row">
-          <div className="canvas-prompt selectable-block" data-block-index={-1}>
-            {message.text}
-          </div>
-          {afterBlock?.(-1)}
+    <div className="canvas-message-shell">
+      <article
+        data-message-id={message.id}
+        className={`chat-msg canvas-message ${user ? "user" : "assistant"} ${streaming ? "is-streaming" : ""}`}
+      >
+        <div className="canvas-message-head">
+          <span className="canvas-role">
+            <Icon name={user ? "chat" : "spark"} />
+            {user ? "你的提问" : "AI 回复"}
+            {streaming && (
+              <span className="tag">
+                <span className="status-dot connecting" />
+                实时生成中
+              </span>
+            )}
+            {message.partial && <span className="tag amber">未完成</span>}
+          </span>
+          {message.at && <time>{timeLabel(message.at)}</time>}
         </div>
-      ) : (
-        <StructuredContent
-          text={message.text}
-          selectable={!streaming}
-          afterBlock={afterBlock}
-        />
-      )}
-      {!user && !streaming && (
-        <div className="canvas-message-actions">
-          <details>
+        {!user && !streaming && (
+          <details className="canvas-message-original">
             <summary>查看原文</summary>
             <pre>{message.text}</pre>
           </details>
-          <Button
-            small
-            quiet
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(message.text);
-                setCopied("已复制");
-              } catch {
-                setCopied("复制失败，请从原文复制");
-              }
-            }}
-          >
-            {copied || "复制回复"}
-          </Button>
-        </div>
-      )}
-    </article>
+        )}
+        {user ? (
+          <div className="content-block-row">
+            <div
+              className="canvas-prompt selectable-block"
+              data-block-index={-1}
+            >
+              {message.text}
+            </div>
+          </div>
+        ) : (
+          <StructuredContent text={message.text} selectable={!streaming} />
+        )}
+        {!user && !streaming && (
+          <div className="canvas-message-actions">
+            <Button
+              small
+              quiet
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(message.text);
+                  setCopied("已复制");
+                } catch {
+                  setCopied("复制失败，请从原文复制");
+                }
+              }}
+            >
+              {copied || "复制回复"}
+            </Button>
+          </div>
+        )}
+      </article>
+    </div>
   );
 });
 
@@ -224,30 +221,31 @@ export function ConversationCanvas({
     pageId,
     root,
   );
-  const afterBlock = (messageId) => (index) =>
-    threads
-      .filter(
-        (s) =>
-          s.anchor.messageId === messageId && s.anchor.blockIndex === index,
-      )
-      .map((s) => (
-        <div className="selection-response-slot" key={s.anchor.key}>
-          <SelectionThread
-            initial={s}
-            active={selection?.key === s.anchor.key}
-            popupRoot={popupRoot}
-            onSaved={save}
-            onOpen={(event) => {
-              const rect = event.currentTarget.getBoundingClientRect();
-              open(
-                { ...s.anchor, x: rect.left, y: rect.bottom + 8 },
-                s.anchor.action,
-              );
-            }}
-            renderContent={(text) => <StructuredContent text={text} />}
-          />
-        </div>
-      ));
+  const [focusedThread, setFocusedThread] = useState(null);
+  const reopen = (thread, event, showPopup = true) => {
+    setFocusedThread(thread.anchor.key);
+    const article = root.current?.querySelector(
+      `[data-message-id="${thread.anchor.messageId}"]`,
+    );
+    article
+      ?.querySelector(`[data-block-index="${thread.anchor.blockIndex}"]`)
+      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (showPopup) open(
+      { ...thread.anchor, x: rect.right + 8, y: rect.top },
+      thread.anchor.action,
+    );
+    const target = document.getElementById(`reply-${thread.anchor.key}`);
+    const panel = target?.closest(".zone-c-content");
+    if (panel)
+      panel.scrollTo({
+        top: target.offsetTop - panel.offsetTop,
+        behavior: "smooth",
+      });
+  };
+  const hasReplies = threads.some(
+    (s) => s.messages.length || s.status === "running",
+  );
   return (
     <section ref={root} className="conversation-canvas" aria-label="对话内容区">
       <div className="canvas-heading">
@@ -306,37 +304,99 @@ export function ConversationCanvas({
           <div ref={setPopupRoot} />
         </div>
       )}
-      <div className="canvas-messages">
-        {session?.messages.map((message) => (
-          <Message
-            key={message.id}
-            message={message}
-            afterBlock={afterBlock(message.id)}
-          />
-        ))}
-        {pending && <Message message={{ role: "user", text: pending }} />}
-        {streams.map((item) => (
-          <Message
-            key={item.id}
-            message={{ role: "assistant", text: item.text }}
-            streaming
-          />
-        ))}
+      <div className="conversation-columns">
+        <aside className="conversation-zone zone-a" aria-label="A 子对话标签">
+          <h3 className="zone-heading">
+            <span>A</span> 子对话标签
+          </h3>
+          {!hasReplies && (
+            <p className="zone-empty">
+              选中主对话文字提问后，标签会出现在这里。
+            </p>
+          )}
+          <ThreadLabels threads={threads} focusedThread={focusedThread} onOpen={(thread, event) => reopen(thread, event, false)} />
+        </aside>
+        <section className="conversation-zone zone-b" aria-label="B 主对话">
+          <h3 className="zone-heading">
+            <span>B</span> 主对话
+          </h3>
+          <div className="canvas-messages">
+            {session?.messages.map((message) => (
+              <Message key={message.id} message={message} />
+            ))}
+            {pending && <Message message={{ role: "user", text: pending }} />}
+            {streams.map((item) => (
+              <Message
+                key={item.id}
+                message={{ role: "assistant", text: item.text }}
+                streaming
+              />
+            ))}
+          </div>
+          {busy && !streams.length && (
+            <div className="canvas-waiting" role="status">
+              <span className="status-dot connecting" />
+              正在处理，回复到达后会直接呈现在这里…
+            </div>
+          )}
+          {!busy && !session?.messages.length && (
+            <div className="canvas-empty">
+              <Icon name="spark" />
+              <h3>让对话，在这里展开</h3>
+              <p>在底部提出问题，回复会逐步呈现为段落、清单、表格等内容。</p>
+            </div>
+          )}
+          <div className="canvas-latest" />
+        </section>
+        <aside className="conversation-zone zone-c" aria-label="C 子对话回复">
+          <h3 className="zone-heading">
+            <span>C</span> 子对话回复
+          </h3>
+          <div className="zone-c-content">
+            {!hasReplies && (
+              <p className="zone-empty">
+                选段追问的回答会集中展示在这里，不混入主对话。
+              </p>
+            )}
+            {threads.map((s) => (
+              <div
+                id={`reply-${s.anchor.key}`}
+                className={`selection-response-slot ${focusedThread === s.anchor.key ? "is-focused" : ""}`}
+                key={s.anchor.key}
+              >
+                <SelectionThread
+                  initial={s}
+                  active={selection?.key === s.anchor.key}
+                  popupRoot={popupRoot}
+                  parentNumber={
+                    threads.findIndex(
+                      (parent) =>
+                        parent.anchor.key === s.anchor.parentThreadKey,
+                    ) + 1
+                  }
+                  onLocateParent={() => {
+                    setFocusedThread(s.anchor.parentThreadKey);
+                    const target = document.getElementById(
+                      `reply-${s.anchor.parentThreadKey}`,
+                    );
+                    const panel = target?.closest(".zone-c-content");
+                    if (panel)
+                      panel.scrollTo({
+                        top: target.offsetTop - panel.offsetTop,
+                        behavior: "smooth",
+                      });
+                  }}
+                  onSaved={save}
+                  onOpen={(event) => reopen(s, event)}
+                  renderContent={(text, selectable = false) => (
+                    <StructuredContent text={text} selectable={selectable} />
+                  )}
+                />
+              </div>
+            ))}
+          </div>
+        </aside>
       </div>
-      {busy && !streams.length && (
-        <div className="canvas-waiting" role="status">
-          <span className="status-dot connecting" />
-          正在处理，回复到达后会直接呈现在这里…
-        </div>
-      )}
-      {!busy && !session?.messages.length && (
-        <div className="canvas-empty">
-          <Icon name="spark" />
-          <h3>让对话，在这里展开</h3>
-          <p>在底部提出问题，回复会逐步呈现为段落、清单、表格等内容。</p>
-        </div>
-      )}
-      <div className="canvas-latest" />
     </section>
   );
 }

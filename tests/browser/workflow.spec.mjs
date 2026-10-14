@@ -1,6 +1,123 @@
 import { test, expect } from "@playwright/test";
 
-test("selection popup accepts typing directly, replies appear on the right and markers reopen saved discussion", async ({
+test("child replies can create recursive independent sub-conversations", async ({
+  page,
+}) => {
+  const turns = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/agent/turn"))
+      turns.push(request.postDataJSON());
+  });
+  await page.goto("/");
+  await page.getByLabel("WB 聊天输入").fill("多层子对话测试");
+  await page.getByLabel("WB 聊天输入").press("Enter");
+  const popup = page.getByRole("dialog", { name: "选段聊天浮窗" });
+  const select = async (block) => {
+    if (await popup.isVisible())
+      await popup.getByLabel("关闭选段聊天浮窗").click();
+    await block.scrollIntoViewIfNeeded();
+    await block.evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+    await expect(popup.getByLabel("选段追问输入")).toBeVisible();
+  };
+  const root = page
+    .locator(".zone-b .canvas-message.assistant .selectable-block")
+    .first();
+  await expect(root).toContainText("测试回复");
+  await select(root);
+  await popup.getByLabel("选段追问输入").fill("解释原文");
+  await popup.getByLabel("选段追问输入").press("Enter");
+  await expect(page.locator(".selection-reply.assistant")).toHaveCount(1);
+  const parentKey = turns[1].anchor.key;
+  const parent = page.locator(`[data-thread-key="${parentKey}"]`);
+  const parentMessage = parent.locator(".selection-reply.assistant");
+  const sourceMessageId = await parentMessage.getAttribute("data-message-id");
+  await select(parentMessage.locator(".selectable-block").first());
+  await popup
+    .getByRole("button", { name: "搜索相关资源", exact: true })
+    .click();
+  await popup.getByLabel("选段追问输入").press("Enter");
+  await expect(page.locator(".selection-reply.assistant")).toHaveCount(2);
+  const childKey = turns[2].anchor.key;
+  expect(turns[2].anchor.parentThreadKey).toBe(parentKey);
+  expect(turns[2].anchor.messageId).toBe(sourceMessageId);
+  expect(turns[2].anchor.depth).toBe(2);
+  expect(turns[2].anchor.sourceSessionId).toBe(
+    await parent.getAttribute("data-session-id"),
+  );
+  const child = page.locator(`[data-thread-key="${childKey}"]`);
+  await select(
+    child.locator(".selection-reply.assistant .selectable-block").first(),
+  );
+  await popup.getByLabel("选段追问输入").fill("进一步说明");
+  await popup.getByLabel("选段追问输入").press("Enter");
+  await expect(page.locator(".selection-reply.assistant")).toHaveCount(3);
+  expect(turns[3].anchor.parentThreadKey).toBe(childKey);
+  expect(turns[3].anchor.depth).toBe(3);
+  const grandchildKey = turns[3].anchor.key;
+  await page.reload();
+  const grandchild = page.locator(`[data-thread-key="${grandchildKey}"]`);
+  await expect(grandchild).toHaveAttribute("data-thread-depth", "3");
+  await expect(page.locator(".zone-a .selection-marker")).toHaveCount(3);
+  const label = (key) => page.locator(`[data-label-key="${key}"] > .selection-marker`);
+  const toggle = (key) => page.locator(`[data-label-key="${key}"] > .thread-label-toggle`);
+  await expect(label(parentKey)).toBeVisible();
+  await expect(label(childKey)).toBeHidden();
+  await expect(label(grandchildKey)).toBeHidden();
+  await expect(toggle(parentKey)).toHaveAttribute("aria-expanded", "false");
+  await toggle(parentKey).click();
+  await expect(label(childKey)).toBeVisible();
+  await expect(label(grandchildKey)).toBeHidden();
+  await toggle(childKey).focus();
+  await toggle(childKey).press("Enter");
+  await expect(label(grandchildKey)).toBeVisible();
+  await label(grandchildKey).click();
+  await expect(popup).toBeHidden();
+  await expect(page.locator(`#reply-${grandchildKey}`)).toHaveClass(/is-focused/);
+  await toggle(parentKey).click();
+  await expect(label(grandchildKey)).toBeHidden();
+  await expect(page.locator(".zone-c .selection-thread")).toHaveCount(3);
+  await expect(page.locator(".zone-b .canvas-message")).toHaveCount(2);
+  await grandchild.getByRole("button", { name: "查看上级" }).click();
+  await expect(page.locator(`#reply-${childKey}`)).toHaveClass(/is-focused/);
+  await grandchild.getByRole("button", { name: "继续聊" }).click();
+  await popup.getByLabel("选段追问输入").fill("继续第三层");
+  await popup.getByLabel("选段追问输入").press("Enter");
+  await expect(grandchild.locator(".selection-reply.assistant")).toHaveCount(2);
+  expect(turns[4].anchor.key).toBe(grandchildKey);
+});
+
+test("topbar is fixed and aligned when scrolling or toggling navigation", async ({
+  page,
+}) => {
+  await page.goto("/#/architecture");
+  const bar = page.locator(".topbar");
+  expect(await bar.evaluate((e) => getComputedStyle(e).position)).toBe("fixed");
+  expect((await bar.boundingBox()).x).toBe(0);
+  const content = await page.locator(".main > .page").boundingBox();
+  expect(content.y).toBeGreaterThanOrEqual(70);
+  await page.evaluate(() => window.scrollTo(0, 500));
+  expect((await bar.boundingBox()).y).toBe(0);
+  await page.getByRole("button", { name: "打开侧边栏" }).click();
+  const sidebar = await page.locator(".shell > .sidebar").boundingBox();
+  expect((await bar.boundingBox()).x).toBe(sidebar.x + sidebar.width);
+  await page.getByRole("button", { name: "收起侧边栏" }).click();
+  expect((await bar.boundingBox()).x).toBe(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobile = await bar.boundingBox();
+  expect(mobile.x).toBe(0);
+  expect(mobile.y).toBe(0);
+  expect(mobile.width).toBe(390);
+  expect(mobile.height).toBe(54);
+});
+
+test("selection popup accepts typing directly, markers only locate and continue buttons reopen discussion", async ({
   page,
 }) => {
   const turns = [];
@@ -17,6 +134,18 @@ test("selection popup accepts typing directly, replies appear on the right and m
     )
     .first();
   await expect(original).toContainText("测试回复：已接收。");
+  const zoneA = page.getByRole("complementary", { name: "A 子对话标签" });
+  const zoneB = page.getByRole("region", { name: "B 主对话" });
+  const zoneC = page.getByRole("complementary", { name: "C 子对话回复" });
+  await expect(zoneA).toHaveCount(1);
+  await expect(zoneB).toHaveCount(1);
+  await expect(zoneC).toHaveCount(1);
+  const aBounds = await zoneA.boundingBox(),
+    bBounds = await zoneB.boundingBox(),
+    cBounds = await zoneC.boundingBox();
+  expect(aBounds.x + aBounds.width).toBeLessThanOrEqual(bBounds.x);
+  expect(bBounds.x + bBounds.width).toBeLessThanOrEqual(cBounds.x);
+  await expect(zoneC).toContainText("回答会集中展示");
   const popup = page.getByRole("dialog", { name: "选段聊天浮窗" });
   const select = async () => {
     await original.scrollIntoViewIfNeeded();
@@ -32,6 +161,15 @@ test("selection popup accepts typing directly, replies appear on the right and m
   };
   await select();
   await expect(page.locator(".canvas-messages textarea")).toHaveCount(0);
+  await expect(popup.locator("blockquote")).toHaveCount(0);
+  await popup.getByLabel("选段追问输入").click();
+  await expect(popup).toBeVisible();
+  await popup.getByRole("button", { name: "搜索相关资源", exact: true }).click();
+  await expect(popup).toBeVisible();
+  await popup.getByRole("button", { name: "提问", exact: true }).click();
+  await page.getByRole("heading", { name: "对话与思路" }).click();
+  await expect(popup).toBeHidden();
+  await select();
   await popup.getByLabel("选段追问输入").fill("请解释这段");
   await expect(popup).toBeVisible();
   await popup.getByLabel("选段追问输入").press("Enter");
@@ -40,17 +178,43 @@ test("selection popup accepts typing directly, replies appear on the right and m
     "针对引用内容的回答",
   );
   expect(turns[1].anchor.quote).toBe("测试回复：已接收。");
-  const left = await original.boundingBox(),
+  const article = page.locator("article.canvas-message.assistant").first();
+  const originalDetails = article.locator(".canvas-message-original");
+  await expect(originalDetails).toBeVisible();
+  expect(await originalDetails.evaluate((element) =>
+    !!(element.compareDocumentPosition(element.parentElement.querySelector(".structured-content")) & Node.DOCUMENT_POSITION_FOLLOWING)
+  )).toBe(true);
+  await originalDetails.locator("summary").click();
+  await expect(originalDetails.locator("pre")).toContainText("测试回复：已接收。");
+  await originalDetails.locator("summary").click();
+  await reply.getByRole("button", { name: "继续聊" }).click();
+  const left = await article.boundingBox(),
     right = await reply.boundingBox();
   expect(right.x).toBeGreaterThanOrEqual(left.x + left.width);
-  await expect(page.locator(".canvas-messages > .canvas-message")).toHaveCount(
-    2,
-  );
+  await expect(
+    article.locator(".selection-thread, .selection-marker"),
+  ).toHaveCount(0);
+  const management = await page
+    .getByRole("complementary", { name: "资料与管理" })
+    .boundingBox();
+  expect(left.x).toBeGreaterThanOrEqual(management.x + management.width);
+  expect(right.x + right.width).toBeLessThanOrEqual(1440);
+  await expect(
+    page.locator(".canvas-messages > .canvas-message-shell > .canvas-message"),
+  ).toHaveCount(2);
   await popup.getByLabel("关闭选段聊天浮窗").click();
   const marker = page.getByRole("button", { name: /这里有额外提问/ }).first();
   await expect(marker).toBeVisible();
-  expect((await marker.boundingBox()).x).toBeLessThan(left.x);
+  await expect(zoneA.locator(".selection-marker")).toHaveCount(1);
+  await expect(
+    zoneB.locator(".selection-thread, .selection-marker"),
+  ).toHaveCount(0);
+  await expect(zoneC.locator(".selection-thread")).toHaveCount(1);
+  const markerBounds = await marker.boundingBox();
+  expect(markerBounds.x + markerBounds.width).toBeLessThanOrEqual(left.x);
   await marker.click();
+  await expect(popup).toBeHidden();
+  await reply.getByRole("button", { name: "继续聊" }).click();
   await popup.getByLabel("选段追问输入").fill("再举一个例子");
   await popup.getByLabel("选段追问输入").press("Enter");
   await expect(reply.locator(".selection-reply.assistant")).toHaveCount(2);
@@ -58,6 +222,8 @@ test("selection popup accepts typing directly, replies appear on the right and m
   await page.reload();
   await expect(reply.locator(".selection-reply.assistant")).toHaveCount(2);
   await marker.click();
+  await expect(popup).toBeHidden();
+  await reply.getByRole("button", { name: "继续聊" }).click();
   await expect(popup.getByLabel("选段追问输入")).toBeVisible();
   await popup
     .getByRole("button", { name: "搜索相关资源", exact: true })
@@ -67,6 +233,8 @@ test("selection popup accepts typing directly, replies appear on the right and m
   await expect(
     page.getByRole("region", { name: "选段回复" }).nth(1),
   ).toContainText("参考资料");
+  await expect(zoneA.locator(".selection-marker")).toHaveCount(2);
+  await expect(zoneC.locator(".selection-thread")).toHaveCount(2);
   await popup.getByLabel("关闭选段聊天浮窗").click();
   await page
     .getByRole("complementary", { name: "资料与管理" })
@@ -78,6 +246,8 @@ test("selection popup accepts typing directly, replies appear on the right and m
       .getByRole("link", { name: "参考资料" }),
   ).toHaveAttribute("href", "https://example.com/selection");
   await marker.click();
+  await expect(popup).toBeHidden();
+  await reply.getByRole("button", { name: "继续聊" }).click();
   await page.screenshot({ path: "test-results/wb-selection-popup.png" });
   await page.setViewportSize({ width: 390, height: 844 });
   const bounds = await popup.boundingBox();
@@ -85,6 +255,16 @@ test("selection popup accepts typing directly, replies appear on the right and m
   expect(bounds.x + bounds.width).toBeLessThanOrEqual(390);
   await page.keyboard.press("Escape");
   await expect(popup).toHaveCount(0);
+  const mobileArticle = await article.boundingBox();
+  const mobileReply = await reply.boundingBox();
+  expect(mobileReply.y).toBeGreaterThanOrEqual(
+    mobileArticle.y + mobileArticle.height,
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
 });
 
 test("internal sidebar keeps chat visible and collects persisted external resources", async ({
@@ -103,7 +283,7 @@ test("internal sidebar keeps chat visible and collects persisted external resour
   const dock = await page
     .getByRole("region", { name: "底部悬浮聊天窗口" })
     .boundingBox();
-  expect(dock.x + dock.width).toBeLessThanOrEqual(bounds.x);
+  expect(dock.x).toBeGreaterThanOrEqual(bounds.x + bounds.width);
   await sidebar.getByRole("button", { name: "资源", exact: true }).click();
   const resources = page.getByRole("region", { name: "对话资源" });
   await expect(resources.locator(".resource-card")).toHaveCount(2);
@@ -115,6 +295,22 @@ test("internal sidebar keeps chat visible and collects persisted external resour
   await sidebar.getByRole("button", { name: "资源", exact: true }).click();
   await expect(resources.locator(".resource-card")).toHaveCount(2);
   await page.screenshot({ path: "test-results/wb-resources-sidebar.png" });
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await expect
+    .poll(async () => {
+      const main = await page.locator(".conversation-main").boundingBox();
+      const columns = await page.locator(".conversation-columns").boundingBox();
+      const composer = await page
+        .getByRole("region", { name: "底部悬浮聊天窗口" })
+        .boundingBox();
+      return (
+        main.width > 960 &&
+        Math.abs(main.width - columns.width) < 1 &&
+        Math.abs(composer.width - 720) < 1 &&
+        Math.abs(main.x + main.width / 2 - composer.x - composer.width / 2) < 1
+      );
+    })
+    .toBe(true);
   await page.getByLabel("收起资料与管理").click();
   await expect(sidebar).toBeHidden();
   await page.getByRole("button", { name: "资料与管理", exact: true }).click();
@@ -202,6 +398,9 @@ test("WB home chat is the entry; explicit project creation opens the target deve
   await expect(page.locator(".workspace-grid")).toHaveCount(0);
   await expect(page.locator(".hub-chat .chat-msg")).toHaveCount(0);
   await page.screenshot({ path: "test-results/wb-entry.png", fullPage: true });
+  await expect(page.locator(".shell > .sidebar")).toBeHidden();
+  await page.getByRole("button", { name: "打开侧边栏" }).click();
+  await expect(page.locator(".shell > .sidebar")).toBeVisible();
   await page.getByLabel("WB 聊天输入").fill("你好");
   const input = page.getByLabel("WB 聊天输入");
   await input.press("Shift+Enter");
@@ -217,6 +416,7 @@ test("WB home chat is the entry; explicit project creation opens the target deve
   await expect(input).toHaveValue("你好");
   await input.press("Enter");
   await expect(page).toHaveURL(/#\/page\/question_/);
+  await expect(page.locator(".shell > .sidebar")).toBeHidden();
   await expect(page.locator(".hub-chat .chat-msg").last()).toContainText(
     "测试回复：已接收。",
   );
@@ -225,9 +425,11 @@ test("WB home chat is the entry; explicit project creation opens the target deve
     "测试回复：已接收。",
   );
   const wbUrl = page.url();
+  await page.getByRole("button", { name: "打开侧边栏" }).click();
   await page.getByRole("button", { name: "新对话", exact: true }).click();
   await expect(page).toHaveURL(/#\/$/);
   await expect(page.locator(".hub-chat .chat-msg")).toHaveCount(0);
+  await page.getByRole("button", { name: "打开侧边栏" }).click();
   await page
     .getByRole("region", { name: "历史对话", exact: true })
     .getByRole("link", { name: "你好", exact: true })
@@ -299,6 +501,7 @@ test("real React target app, scoped popup chat, separate histories and WB record
     "测试回复",
   );
   await page.getByRole("button", { name: "WB 管理" }).click();
+  await expect(page.locator(".shell > .sidebar")).toBeHidden();
   await expect(
     page.getByRole("region", { name: "之前的开发对话" }),
   ).toContainText("请调整这个卡片");
@@ -371,6 +574,7 @@ test("tasks have their own WB and sidebar entry; opening Entry does not create e
       ).conversations.length;
     });
   const before = await total();
+  await page.getByRole("button", { name: "打开侧边栏" }).click();
   await page.getByRole("button", { name: "新对话", exact: true }).click();
   await page.reload();
   expect(await total()).toBe(before);
@@ -385,7 +589,9 @@ test("tasks have their own WB and sidebar entry; opening Entry does not create e
     page.getByRole("heading", { name: "任务清单", exact: true }),
   ).toBeVisible();
   const destination = page.url();
+  await page.getByRole("button", { name: "打开侧边栏" }).click();
   await page.getByRole("button", { name: "新对话", exact: true }).click();
+  await page.getByRole("button", { name: "打开侧边栏" }).click();
   await page
     .getByRole("region", { name: "任务列表" })
     .getByRole("link", { name: "整理一份咖啡店调研任务", exact: true })
@@ -395,9 +601,11 @@ test("tasks have their own WB and sidebar entry; opening Entry does not create e
     "整理一份咖啡店调研任务",
   );
   await page.getByLabel("WB 聊天输入").fill("继续这个任务，补充评价标准");
+  await page.getByRole("button", { name: "打开侧边栏" }).click();
   await page.getByLabel("发送 WB 消息").click();
   await expect(page.locator(".hub-chat .chat-msg")).toHaveCount(4);
   await page.screenshot({ path: "test-results/wb-task.png", fullPage: true });
+  await expect(page.locator(".shell > .sidebar")).toBeVisible();
   await page.getByRole("button", { name: "收起侧边栏" }).click();
   await expect(page.locator(".shell > .sidebar")).toBeHidden();
   await page.getByRole("button", { name: "打开侧边栏" }).click();

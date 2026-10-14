@@ -1,5 +1,34 @@
 .shell {
+  --topbar-height: 70px;
   grid-template-columns: 268px minmax(0, 1fr);
+}
+.shell > .main {
+  padding-top: var(--topbar-height);
+}
+.shell .topbar {
+  position: fixed;
+  top: 0;
+  left: 268px;
+  right: 0;
+  height: var(--topbar-height);
+  z-index: 40;
+}
+.shell.sidebar-collapsed .topbar {
+  left: 0;
+}
+html {
+  scroll-padding-top: 86px;
+}
+@media (max-width: 760px) {
+  .shell {
+    --topbar-height: 54px;
+  }
+  .shell .topbar {
+    left: 0;
+  }
+  html {
+    scroll-padding-top: 70px;
+  }
 }
 .sidebar {
   padding: 16px 12px 12px;
@@ -27,12 +56,12 @@
   height: 30px;
   padding: 6px;
   border-radius: 7px;
-  color: #7a8877;
+  color: #6b6b6b;
   flex-shrink: 0;
 }
 .sidebar-icon:hover {
-  background: #e3e9df;
-  color: #42593b;
+  background: #e7e7e7;
+  color: #525252;
 }
 .sidebar-shortcuts {
   flex-shrink: 0;
@@ -46,7 +75,7 @@
   min-width: 0;
 }
 .sidebar .new-chat {
-  color: #344b33;
+  color: #444444;
   font-weight: 550;
 }
 .new-chat svg:last-child {
@@ -61,7 +90,7 @@
   overflow-x: hidden;
   padding: 8px 0 20px;
   scrollbar-width: thin;
-  scrollbar-color: #cbd3c5 transparent;
+  scrollbar-color: #d0d0d0 transparent;
   overscroll-behavior: contain;
 }
 .sidebar-section {
@@ -76,7 +105,7 @@
 }
 .section-toggle {
   gap: 8px;
-  color: #697b62;
+  color: #6b6b6b;
   font-size: 12px;
   font-weight: 550;
   padding: 5px 0;
@@ -91,13 +120,13 @@
 }
 .section-toggle small {
   margin-left: 3px;
-  color: #94a08c;
+  color: #6b6b6b;
   font-size: 10px;
   font-weight: 400;
 }
 .sidebar-empty {
   font-size: 11px;
-  color: #8b9783;
+  color: #6b6b6b;
   margin: 5px 12px 13px;
   line-height: 1.8;
 }
@@ -105,11 +134,11 @@
   margin: 1px 0;
 }
 .sidebar-project svg {
-  color: #7f9676;
+  color: #6b6b6b;
   width: 17px;
 }
 .sidebar .all-projects {
-  color: #819079;
+  color: #6b6b6b;
   font-size: 12px;
 }
 .all-projects svg:last-child {
@@ -117,7 +146,7 @@
   width: 13px;
 }
 .history-group h3 {
-  color: #9aa391;
+  color: #6b6b6b;
   font-size: 10px;
   font-weight: 500;
   margin: 13px 12px 6px;
@@ -131,19 +160,19 @@
   border-radius: 7px;
   min-width: 0;
   font-size: 12px;
-  color: #626f5d;
+  color: #6b6b6b;
 }
 .history-link:hover {
-  background: #e9ece6;
+  background: #ebebeb;
 }
 .history-link.active {
-  background: #e3eade;
-  color: #3d5a35;
+  background: #e8e8e8;
+  color: #515151;
 }
 .history-link > svg {
   width: 15px;
   height: 15px;
-  color: #8e9d84;
+  color: #6b6b6b;
 }
 .history-copy {
   display: flex;
@@ -154,7 +183,7 @@
 }
 .history-copy small {
   font-size: 10px;
-  color: #95a08c;
+  color: #6b6b6b;
 }
 .sidebar .sidebar-bottom {
   flex-shrink: 0;
@@ -181,7 +210,7 @@
   align-items: center;
   gap: 5px;
   font-size: 9px;
-  color: #8d9b83;
+  color: #6b6b6b;
   margin-top: 2px;
 }
 .sidebar-account .tag {
@@ -254,8 +283,8 @@
   width: 48px;
   height: 48px;
   border-radius: 16px;
-  color: #6d895f;
-  background: #edf2e6;
+  color: #6b6b6b;
+  background: #f0f0f0;
   margin-bottom: 17px;
 }
 .entry-mark svg {
@@ -271,7 +300,7 @@
 .entry-intro p {
   margin: 12px 0 22px;
   font-size: 13px;
-  color: #919c87;
+  color: #6b6b6b;
 }
 .entry-modes {
   display: flex;
@@ -283,23 +312,23 @@
   border: 1px solid transparent;
   border-radius: 20px;
   font-size: 12px;
-  color: #8a977f;
+  color: #6b6b6b;
 }
 .entry-modes svg {
   width: 14px;
   height: 14px;
 }
 .entry-modes button.active {
-  background: #eaf0e3;
-  color: #58754c;
-  border-color: #dbe5d1;
+  background: #eeeeee;
+  color: #6c6c6c;
+  border-color: #e1e1e1;
 }
 .entry-chat .composer {
   background: white;
   padding: 18px 18px 16px;
-  border: 1px solid #dce4d3;
+  border: 1px solid #e1e1e1;
   border-radius: 18px;
-  box-shadow: 0 8px 30px #33452106;
+  box-shadow: 0 8px 30px #3f3f3f06;
 }
 .entry-chat .composer textarea {
   min-height: 80px;
@@ -309,7 +338,7 @@
 .entry-chat .dock-footer {
   justify-content: center;
   margin-top: 14px;
-  color: #a0aa94;
+  color: #6b6b6b;
 }
 .entry-chat .dock-footer span:last-child {
   display: none;
@@ -363,11 +392,11 @@
     border: 0;
     border-radius: 0;
     padding: 0;
-    background: #f3f4f0;
-    box-shadow: 16px 0 70px #25362326;
+    background: #f3f3f3;
+    box-shadow: 16px 0 70px #31313126;
   }
   .mobile-sidebar-dialog::backdrop {
-    background: #15211c55;
+    background: #1e1e1e55;
   }
   .mobile-sidebar-dialog .sidebar {
     display: flex;

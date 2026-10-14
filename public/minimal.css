@@ -1,0 +1,70 @@
+/* WB monochrome interface. Target project previews keep their own design. */
+body { background: var(--bg); color: var(--ink); }
+::selection { background: #dedede; color: #171717; }
+button:focus-visible, a:focus-visible, input:focus-visible,
+textarea:focus-visible, select:focus-visible {
+  outline: 2px solid #171717;
+  outline-offset: 3px;
+}
+.sidebar, .mobile-sidebar-dialog[open], .wb-management-sidebar {
+  background: #fafafa;
+}
+.topbar, .dev-toolbar { background: #fff; }
+.brand-mark { background: #171717; border-radius: 7px; font-family: inherit; }
+.entry-mark { background: transparent; color: #171717; border: 1px solid var(--line); border-radius: 12px; }
+.entry-intro h1 { font-weight: 600; letter-spacing: -1px; }
+.hero-art { display: none; }
+.hero h1 em { font-family: inherit; }
+.eyebrow { letter-spacing: 1.5px; }
+.canvas-heading .eyebrow { display: none; }
+.nav-link.active, .history-link.active { background: #ededed; color: #171717; }
+.nav-link:hover, .history-link:hover, .sidebar-icon:hover { background: #f0f0f0; }
+.entry-modes button { border-radius: 7px; }
+.entry-modes button.active { background: #171717; color: #fff; border-color: #171717; }
+.btn { border-radius: 6px; }
+.btn.primary { background: #171717; border-color: #171717; color: #fff; }
+.btn.primary:hover { background: #333; border-color: #333; }
+.btn.quiet { color: var(--muted); }
+.tab.active { color: #171717; border-bottom-color: #171717; }
+.tag, .tag.blue, .tag.amber { background: #f1f1f1; color: #555; }
+.status-dot { background: #333; }
+.status-dot.off { background: #aaa; }
+.module, .meta-card, .workspace-card, .mode-card, .record-card,
+.resource-card, .connection-card, .diagram-card {
+  background: #fff;
+  border-color: var(--line);
+  border-radius: 8px;
+  box-shadow: none;
+}
+.workspace-card:hover, .mode-card:hover { transform: none; border-color: #aaa; box-shadow: none; }
+.hub-chat { box-shadow: none; border-radius: 10px; }
+.entry-chat .composer { border-color: #d4d4d4; border-radius: 12px; box-shadow: 0 2px 12px #00000004; }
+.composer { background: #fafafa; }
+.composer:focus-within { border-color: #888; }
+.composer textarea:focus,
+.composer textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.wb-floating-dock { background: #fff; border-color: #d4d4d4; border-radius: 12px; box-shadow: 0 4px 20px #0000000a; backdrop-filter: none; }
+.wb-floating-dock .composer { border-radius: 7px; }
+.zone-heading { color: #444; font-weight: 500; }
+.zone-heading > span { background: transparent; border: 1px solid var(--line); border-radius: 4px; }
+.canvas-message.chat-msg { border-radius: 8px; border-color: var(--line); }
+.canvas-message.user { background: #f6f6f6; border: 1px solid #eee; }
+.structured-content, .selection-thread { color: #262626; }
+.content-heading { color: #171717; }
+.content-list li { background: transparent; border: 0; border-radius: 0; padding: 6px 0; }
+.structured-content blockquote { background: #f7f7f7; border-left: 2px solid #aaa; border-radius: 0; }
+.structured-content a, .resource-card a { color: #262626; text-decoration: underline; text-underline-offset: 3px; }
+.selection-thread { background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+.selection-response-slot.is-focused .selection-thread { border-color: #444; box-shadow: none; }
+.selection-marker { background: transparent; border-color: transparent; border-radius: 6px; }
+.selection-marker:hover { background: #f5f5f5; }
+.selection-marker[aria-pressed="true"] { background: #ededed; border-color: #d4d4d4; }
+.selection-popup, .local-chat, dialog { background: #fff; border-color: #d4d4d4; border-radius: 10px; box-shadow: 0 12px 40px #00000014; }
+.selection-popup-modes [aria-pressed="true"] { background: #171717; border-color: #171717; color: #fff; }
+.selection-popup .selection-quote { background: #f5f5f5; border-left-color: #888; }
+.agent-error, .notice { background: #f5f5f5; color: #333; border-left: 2px solid #555; }
+.agent-error::before { content: "提示："; font-weight: 600; }
+.field input:focus, .field textarea:focus { border-color: #777; }
