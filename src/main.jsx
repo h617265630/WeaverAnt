@@ -213,15 +213,17 @@ function App() {
       notify(err.message);
     }
   };
-  const connect = async () => {
+  const connect = async (provider) => {
+    const selectedProvider = typeof provider === "string" ? provider : status?.provider || "codex";
+    const label = selectedProvider === "claude" ? "Claude Code" : "Codex";
     try {
-      notify("正在连接本机 Codex…");
-      const info = await api("/agent/connect", {});
+      notify(`正在检查本机 ${label}…`);
+      const info = await api("/agent/connect", { provider: selectedProvider });
       setStatus(info);
       notify(
-        info.signedIn
-          ? "Codex 已连接，可以在目标项目里开始开发。"
-          : "进程已连接，请先在原 Codex 中完成登录。",
+        (info[selectedProvider] || info).signedIn
+          ? `${label} 已就绪。`
+          : `程序已连接，请先在 ${label} 中完成登录。`,
       );
     } catch (err) {
       notify(err.message);
@@ -239,8 +241,9 @@ function App() {
     openDemo,
     status,
     connect,
+    refreshStatus,
   };
-  const selected = state.pages.find((p) => path.endsWith(p.id));
+  const selected = state.pages.find((p) => path.split("/")[2] === p.id);
   const develop = path.startsWith("/develop/");
   const sidebarProps = {
     path,
@@ -264,7 +267,7 @@ function App() {
     ) : path === "/settings" ? (
       <Settings />
     ) : path.startsWith("/page/") ? (
-      <PageView key={path} pageId={path.split("/")[2]} />
+      <PageView key={path} pageId={path.split("/")[2]} initialTab={path.split("/")[3] || "overview"} />
     ) : (
       <Dashboard
         filter={
@@ -279,11 +282,22 @@ function App() {
   return (
     <Context.Provider value={context}>
       {develop ? (
+        <div className={`shell development-layout ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+          <aside className="sidebar">
+            <Sidebar {...sidebarProps} onClose={() => setSidebarCollapsed(true)} />
+          </aside>
+          <main className="development-main">
         <Development
           key={path}
           pageId={path.split("/")[2]}
           initialSessionId={path.split("/")[3]}
+          onOpenSidebar={() => {
+            if (matchMedia("(max-width: 760px)").matches) setMobileSidebar(true);
+            else setSidebarCollapsed(false);
+          }}
         />
+          </main>
+        </div>
       ) : (
         <div className={`shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
           <aside className="sidebar">

@@ -46,8 +46,193 @@ textarea:focus-visible, select:focus-visible {
   outline: none;
   box-shadow: none;
 }
-.wb-floating-dock { background: #fff; border-color: #d4d4d4; border-radius: 12px; box-shadow: 0 4px 20px #0000000a; backdrop-filter: none; }
-.wb-floating-dock .composer { border-radius: 7px; }
+.page.with-management .wb-floating-dock {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+:is(.wb-floating-dock, .dev-dock) .composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  gap: 8px 12px;
+  padding: 16px 14px 12px;
+  border: 1px solid #dedede;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 3px 16px #00000008;
+}
+:is(.wb-floating-dock, .dev-dock) .composer:focus-within {
+  border-color: #c5c5c5;
+  box-shadow: 0 3px 16px #0000000b;
+}
+:is(.wb-floating-dock, .dev-dock) .composer textarea {
+  grid-column: 1 / -1;
+  min-height: 44px;
+  max-height: 120px;
+  padding: 0 4px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #202020;
+  overflow-y: auto;
+}
+:is(.wb-floating-dock, .dev-dock) .composer textarea::placeholder { color: #777; }
+:is(.wb-floating-dock, .dev-dock) .composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 36px;
+}
+.composer-agent { font-size: 12px; color: #777; padding: 0 7px; }
+:is(.wb-floating-dock, .dev-dock) .composer-actions .btn {
+  border-radius: 18px;
+  font-size: 11px;
+  padding: 7px 9px;
+  color: #555;
+}
+.latest-reply-icon { width: 14px; height: 14px; transform: rotate(90deg); }
+:is(.wb-floating-dock, .dev-dock) .send-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #171717;
+  color: #fff;
+}
+:is(.wb-floating-dock, .dev-dock) .send-button svg { width: 20px; height: 20px; }
+:is(.wb-floating-dock, .dev-dock) .send-button:disabled { background: #e9e9e9; color: #999; opacity: 1; cursor: default; }
+:is(.wb-floating-dock, .dev-dock) .send-button:not(:disabled):hover { background: #333; }
+:is(.wb-floating-dock, .dev-dock) .dock-footer { justify-content: center; gap: 12px; margin-top: 8px; color: #777; font-size: 10px; }
+:is(.wb-floating-dock, .dev-dock) > .tool-line { padding: 4px 14px 8px; }
+.dev-shell, .dev-toolbar, .dev-surface { background: #fff; }
+.development-main { min-width: 0; }
+.dev-workspace { display: flex; flex: 1; min-height: 0; min-width: 0; }
+.dev-workbench { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
+.development-reports { width: clamp(240px, 25vw, 340px); display: flex; flex-direction: column; flex-shrink: 0; min-height: 0; background: #fff; border-right: 1px solid #eee; }
+.development-reports > header { padding: 18px 18px 14px; border-bottom: 1px solid #f2f2f2; }
+.development-reports h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.development-reports header span { font-size: 11px; color: #999; }
+.development-report-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 16px; overscroll-behavior: contain; }
+.development-reports .development-report { padding: 12px 0; margin: 0 0 16px; font-size: 13px; line-height: 1.8; border: 0; }
+.development-reports .development-report.user { padding: 12px; background: #f7f7f7; border-radius: 12px; }
+.development-report .text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.development-report small, .development-report-empty { font-size: 12px; color: #888; }
+.development-report-scope { display: block; margin-bottom: 6px; }
+.development-reports > .development-report-tabs { display: flex; gap: 4px; padding: 8px 10px 0; flex-shrink: 0; overflow-x: auto; }
+.development-report-tabs button { flex-shrink: 0; }
+.project-version-panel h2 { font-size: 16px; }
+.development-panel-navigation { display: flex; flex-wrap: wrap; align-items: center; border-bottom: 1px solid #eee; flex-shrink: 0; padding: 0 8px; gap: 0 4px; }
+.development-panel-navigation .development-report-tabs { display: flex; gap: 0; overflow-x: auto; padding: 0; }
+.development-panel-navigation .development-report-tabs button { padding: 12px 5px; }
+.development-tools-dropdown { position: relative; margin-left: auto; }
+.development-tools-trigger { padding: 10px 5px; font-size: 12px; color: #555; white-space: nowrap; }
+.development-tools-menu { position: absolute; z-index: 45; top: 100%; right: 0; width: 156px; padding: 5px; border: 1px solid #e5e5e5; border-radius: 9px; box-shadow: 0 8px 24px #00000012; background: #fff; }
+.development-tools-menu button { display: flex; justify-content: flex-start; width: 100%; padding: 9px 10px; border-radius: 5px; font-size: 12px; }
+.development-tools-menu button:hover, .development-tools-menu button:focus-visible { background: #f3f3f3; }
+.project-tools-panel { font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.project-tools-panel h2 { font-size: 16px; }
+.project-tools-panel h3 { font-size: 13px; margin-top: 22px; }
+.project-tools-panel p { color: #888; }
+.project-tools-panel ul { padding-left: 18px; color: #777; }
+.project-tool-link { display: block; padding: 12px 0; border-bottom: 1px solid #eee; margin-bottom: 8px; }
+.project-tool-link small { display: block; color: #888; font-size: 11px; }
+.region-navigator { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
+.region-path { display: flex; align-items: center; flex-wrap: wrap; gap: 3px; font-size: 11px; color: #888; max-height: 90px; overflow: auto; }
+.region-path button { padding: 3px 5px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 4px; }
+.region-path button:hover, .region-path [aria-current] { background: #eee; color: #222; }
+.region-navigation-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.region-navigation-actions small { color: #888; font-size: 11px; }
+.region-children { max-height: 120px; overflow: auto; border: 1px solid #eee; border-radius: 6px; margin-top: 8px; }
+.region-children button { display: flex; width: 100%; text-align: left; justify-content: flex-start; padding: 7px 10px; font-size: 11px; overflow-wrap: anywhere; }
+.region-children button:hover { background: #f5f5f5; }
+.region-children small { color: #aaa; }
+.local-chat { max-height: calc(100dvh - 90px); overflow-y: auto; }
+.version-scope { color: #555; font-size: 12px; }
+.version-explanation { color: #888; font-size: 12px; line-height: 1.8; }
+.project-version-card { padding: 16px 0; border-bottom: 1px solid #eee; overflow-wrap: anywhere; }
+.project-version-title { display: flex; align-items: center; gap: 8px; }
+.project-version-card p { margin: 8px 0; font-size: 12px; }
+.project-version-card time { display: block; color: #999; font-size: 11px; margin-bottom: 10px; }
+.development-report-tabs button { padding: 10px 8px; font-size: 12px; white-space: nowrap; color: #888; border-bottom: 2px solid transparent; }
+.development-report-tabs button[aria-selected="true"] { color: #222; border-bottom-color: #222; }
+.development-report-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.development-report-panel[hidden] { display: none; }
+.development-report-panel.auxiliary-panel { overflow: auto; padding: 16px; }
+.auxiliary-panel .todo-panel { width: 100%; }
+.auxiliary-panel .todo-panel h2 { font-size: 16px; }
+.auxiliary-panel .todo-add { flex-wrap: wrap; gap: 6px; }
+.auxiliary-panel .todo-add input { width: 100%; flex-basis: 100%; }
+.auxiliary-panel .todo-row { flex-wrap: wrap; }
+.auxiliary-panel .todo-row label { flex-basis: 100%; }
+.auxiliary-panel .project-file-tree { margin: 0; padding: 0; border: 0; }
+.auxiliary-panel .project-tree-scroll { max-height: none; }
+@media (max-width: 1000px) {
+  .dev-workspace { flex-direction: column; }
+  .development-reports { width: 100%; height: 180px; border-right: 0; border-bottom: 1px solid #eee; }
+  .development-reports > header { padding: 8px 16px; }
+  .development-reports header span { display: none; }
+  .dev-workbench .dev-surface { min-height: 100px; }
+}
+.project-development-layout { display: flex; height: 100dvh; min-width: 0; background: #fff; }
+.project-development-layout > .dev-shell { flex: 1; min-width: 0; }
+.page.project-management-page { display: flex; width: 100%; max-width: none; padding: 0; height: calc(100dvh - var(--topbar-height, 70px)); overflow: hidden; }
+.project-sidebar { width: 196px; flex-shrink: 0; border-right: 1px solid #eee; padding: 16px 10px; overflow-y: auto; background: #fff; }
+.project-sidebar.is-folded { width: 48px; padding: 16px 4px; }
+.project-sidebar-title { font-size: 12px; color: #888; padding: 0 10px; overflow-wrap: anywhere; }
+.project-sidebar nav { display: flex; flex-direction: column; gap: 4px; margin-top: 20px; }
+.project-sidebar nav button { justify-content: flex-start; padding: 9px 12px; border-radius: 7px; font-size: 13px; }
+.project-sidebar nav button:hover, .project-sidebar nav button.active { background: #f3f3f3; }
+.project-sidebar nav small { margin-left: auto; color: #888; }
+.project-file-tree { border-top: 1px solid #eee; margin-top: 20px; padding-top: 14px; font-size: 12px; }
+.project-file-tree summary { cursor: pointer; padding: 6px 4px; border-radius: 4px; white-space: nowrap; }
+.project-file-tree summary:hover { background: #f5f5f5; }
+.project-file-tree summary:focus-visible { outline: 2px solid #aaa; outline-offset: -2px; }
+.project-file-tree svg { width: 13px; height: 13px; vertical-align: -2px; margin-right: 5px; color: #888; }
+.project-tree-heading { color: #555; font-weight: 500; }
+.project-tree-heading small { font-weight: 400; color: #999; margin-left: 5px; }
+.project-tree-scroll { max-height: 300px; overflow: auto; overscroll-behavior: contain; }
+.project-file-tree ul { list-style: none; margin: 0; padding: 0; }
+.project-file-tree ul ul { padding-left: 14px; margin-left: 8px; border-left: 1px solid #eee; }
+.project-tree-file { padding: 6px 4px 6px 16px; white-space: nowrap; color: #666; }
+.project-tree-note, .project-tree-empty { font-size: 10px; color: #999; line-height: 1.7; padding: 4px; }
+.project-management-content { flex: 1; min-width: 0; padding: 28px; overflow-y: auto; }
+.development-todos { height: 100%; position: absolute; inset: 0; overflow: auto; padding: 28px; }
+.todo-panel { max-width: 900px; margin: 0 auto; }
+.todo-add { display: flex; gap: 10px; margin: 24px 0 16px; }
+.todo-add input { flex: 1; min-width: 0; border: 1px solid #ddd; border-radius: 9px; padding: 10px 12px; background: #fff; }
+.todo-filters { display: flex; gap: 8px; margin-bottom: 20px; }
+.todo-filters [aria-pressed="true"] { background: #eee; }
+.todo-row { display: flex; align-items: center; gap: 8px; padding: 14px 0; border-bottom: 1px solid #eee; }
+.todo-row label { display: flex; flex: 1; min-width: 0; gap: 10px; align-items: center; overflow-wrap: anywhere; }
+.todo-row input { accent-color: #222; }
+.todo-row.done label span { color: #999; text-decoration: line-through; }
+.todo-row > small { color: #999; font-size: 11px; }
+@media (max-width: 760px) {
+  .project-sidebar:not(.is-folded) { width: 156px; }
+  .project-management-content, .development-todos { padding: 16px; }
+  .todo-row { flex-wrap: wrap; }
+  .todo-row > small { display: none; }
+}
+.development-layout .dev-shell { height: 100dvh; }
+.dev-title { min-width: 0; }
+.dev-title > span:not(.divider) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dev-toolbar > .actions { flex-shrink: 0; }
+.dev-toolbar { border-bottom-color: #f0f0f0; }
+.dev-surface { padding: 0; }
+.dev-surface .preview-frame { border: 0; border-radius: 0; box-shadow: none; background: #fff; }
+.dev-surface .preview-frame[hidden] { display: none; }
+.dev-dock { position: fixed; z-index: 35; left: var(--dev-dock-center, 50%); bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(760px, var(--dev-dock-width, calc(100vw - 24px))); background: transparent; border: 0; padding: 0; box-shadow: none; }
+.dev-workbench .dev-surface { flex: 1; min-height: 0; }
+.dev-workbench .development-todos { padding-bottom: var(--dev-dock-height, 200px); }
+.dev-dock .dock-footer { text-shadow: 0 1px 3px #fff, 0 0 6px #fff; }
+.dev-dock > .tool-line, .dev-dock > .agent-error { background: #fff; border-radius: 8px; max-height: 100px; overflow: auto; }
+.dev-dock .composer { box-shadow: 0 2px 10px #00000004; }
+.dev-dock .chat-messages { background: #fff; border-radius: 16px; padding: 0 14px; margin-bottom: 10px; max-height: min(200px, 25dvh); }
+.dev-dock .chat-welcome { text-align: center; font-size: 12px; color: #777; }
+.dev-dock .composer textarea { width: 100%; resize: none; }
+@media (max-width: 760px) { .dev-dock .composer-actions { gap: 2px; flex-wrap: wrap; } }
 .zone-heading { color: #444; font-weight: 500; }
 .zone-heading > span { background: transparent; border: 1px solid var(--line); border-radius: 4px; }
 .canvas-message.chat-msg { border-radius: 8px; border-color: var(--line); }

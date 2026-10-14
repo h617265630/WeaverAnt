@@ -310,9 +310,24 @@ export class Store {
         origin: String(input.origin || "手动导入"),
         raw: String(input.raw || ""),
         format: input.format || "text",
+        ...(input.kind === "highlight" ? {
+          kind: "highlight",
+          source: {
+            messageId: String(input.source?.messageId || ""),
+            sessionId: String(input.source?.sessionId || ""),
+            parentThreadKey: String(input.source?.parentThreadKey || ""),
+          },
+        } : {}),
         at: now(),
       };
       if (!record.raw.trim()) throw new Error("记录内容不能为空");
+      if (record.kind === "highlight") {
+        const existing = this.records(pageId).find((r) =>
+          r.kind === "highlight" && r.raw === record.raw &&
+          r.source?.messageId === record.source.messageId &&
+          r.source?.sessionId === record.source.sessionId);
+        if (existing) return existing;
+      }
       this.db
         .prepare("INSERT INTO records (id,page_id,body) VALUES (?,?,?)")
         .run(record.id, pageId, JSON.stringify(record));

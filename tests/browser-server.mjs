@@ -9,6 +9,7 @@ class TestAgent extends EventEmitter {
     super();
     this.store = store;
     this.approvals = new Map();
+    this.config = { provider: "codex", claudeBinary: "" };
   }
   async status() {
     return {
@@ -16,17 +17,24 @@ class TestAgent extends EventEmitter {
       connected: true,
       signedIn: true,
       version: "TEST TRANSPORT — NOT A REAL MODEL",
+      provider: this.config.provider,
+      settings: this.config,
+      claude: { available: true, signedIn: true, version: "TEST CLAUDE — NOT A REAL MODEL" },
     };
   }
   async connect() {}
+  configure(input) { this.config = input; }
   async start(pageId, anchor, message) {
     let session = this.store.session(pageId, anchor);
     this.store.appendMessage(session.id, "user", message);
     session = this.store.sessionById(session.id);
     session.status = "running";
+    session.provider ||= this.config.provider;
     this.store.saveSession(session);
-    if (message === "测试流式结构") {
-      const parts = [
+    if (message === "测试流式结构" || message === "测试滚动跟随") {
+      const parts = message === "测试滚动跟随"
+        ? Array.from({ length: 6 }, (_, index) => `## 跟随片段 ${index + 1}\n\n${"这是一段用于验证实时滚动的较长回复。".repeat(35)}\n\n`)
+        : [
         "# 流式方案\n\n第一段已经到达。\n\n- App：先验证需求\n- 硬件：后续实现\n\n",
         "| 阶段 | 内容 |\n| --- | --- |\n| MVP | 测试 |\n\n```js\nconst result =",
         " true;\n```\n\n<script>window.__unsafe = true</script>",

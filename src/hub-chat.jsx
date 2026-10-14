@@ -4,6 +4,7 @@ import { useWB } from "./context";
 import { Icon, Button } from "./components";
 import { ChatPane, Approval } from "./development";
 import { ConversationCanvas } from "./conversation-canvas";
+import { useReplyFollow } from "./use-reply-follow";
 
 export function HubChat({
   pageId,
@@ -13,11 +14,12 @@ export function HubChat({
   showContent = true,
   onShowContent,
 }) {
-  const { refresh, notify } = useWB();
+  const { refresh, notify, status } = useWB();
   const [hub, setHub] = useState(null);
   const [session, setSession] = useState(
     welcome ? { messages: [], status: "idle" } : null,
   );
+  const agentLabel = (session?.provider || (session?.threadId ? "codex" : status?.provider)) === "claude" ? "Claude Code" : "Codex";
   const [streams, setStreams] = useState({});
   const [pending, setPending] = useState("");
   const finishedItems = useRef(new Set());
@@ -28,10 +30,12 @@ export function HubChat({
   const [loadError, setLoadError] = useState("");
   const hubRef = useRef(null);
   const sessionIdRef = useRef(null);
+  const followLatest = useReplyFollow(dock, !welcome && !!hub && showContent);
   useEffect(() => {
     if (welcome || !dock.current) return;
     const page = dock.current.closest(".page");
     const main = dock.current.closest(".conversation-main");
+    const conversation = main?.querySelector(".zone-b");
     const updateLayout = () => {
       page?.style.setProperty(
         "--dock-height",
@@ -39,9 +43,10 @@ export function HubChat({
       );
       if (main) {
         const rect = main.getBoundingClientRect();
+        const anchor = conversation?.getBoundingClientRect() || rect;
         page?.style.setProperty(
           "--composer-center",
-          `${rect.left + rect.width / 2}px`,
+          `${anchor.left + anchor.width / 2}px`,
         );
         page?.style.setProperty("--composer-width", `${rect.width}px`);
       }
@@ -49,6 +54,7 @@ export function HubChat({
     const observer = new ResizeObserver(updateLayout);
     observer.observe(dock.current);
     if (main) observer.observe(main);
+    if (conversation) observer.observe(conversation);
     window.addEventListener("resize", updateLayout);
     updateLayout();
     return () => {
@@ -204,56 +210,31 @@ export function HubChat({
         role={welcome ? undefined : "region"}
         aria-label={welcome ? undefined : "底部悬浮聊天窗口"}
       >
-        {!welcome && (
-          <div className="dock-head">
-            <div className="dock-label">
-              <Icon name="spark" />
-              <strong>{mode === "task" ? "任务对话" : "和 WB 聊聊"}</strong>
-              <span className="scope">
-                {mode === "task"
-                  ? "需求 · 过程 · 成果"
-                  : "问答 · 调研 · 项目构想"}
-              </span>
-            </div>
-            {hub && (
-              <div className="actions">
-                <Button
-                  quiet
-                  small
-                  onClick={() => {
-                    onShowContent?.();
-                    setTimeout(
-                      () =>
-                        document
-                          .querySelector(".canvas-latest")
-                          ?.scrollIntoView({
-                            block: "end",
-                            behavior: "smooth",
-                          }),
-                      50,
-                    );
-                  }}
-                >
-                  最新回复
-                  <Icon name="arrow" />
-                </Button>
-                <span className="scope">
-                  {session?.messages.length || 0} 条消息 · 自动保存
-                </span>
-              </div>
-            )}
-          </div>
-        )}
         <ChatPane
           hub
           global
           welcome={welcome}
           composerOnly={!welcome}
+          autoGrow={!welcome}
+          inputPlaceholder={!welcome ? (mode === "task" ? "描述你想完成的任务…" : "有问题，尽管问") : undefined}
+          composerActions={!welcome && (
+            <>
+              <span className="composer-agent" title={`由 ${agentLabel} 提供 AI 能力`}>{agentLabel}</span>
+              <Button type="button" quiet small onClick={() => {
+                onShowContent?.();
+                followLatest();
+              }}>
+                <Icon name="arrow" className="latest-reply-icon" />
+                最新回复
+              </Button>
+            </>
+          )}
           session={session}
           stream={Object.values(streams).join("\n")}
-          tool={tool}
+          tool={welcome || busy || session?.status === "running" ? tool : ""}
           busy={busy || session?.status === "running"}
           onSend={async (message) => {
+            followLatest();
             setBusy(true);
             setPending(message);
             let destination = hub;
@@ -295,7 +276,7 @@ export function HubChat({
           }}
         />
         <div className="dock-footer">
-          <span>Codex 提供 AI 能力 · WB 收纳对话、资料与资源</span>
+          <span>{welcome ? `${agentLabel} 提供 AI 能力 · WB 收纳对话、资料与资源` : "AI 也可能出错，请核实重要信息。"}</span>
           <span>Enter 发送 · Shift+Enter 换行</span>
         </div>
       </div>

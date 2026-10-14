@@ -2,6 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { api, go } from "./api";
 import { useWB } from "./context";
 import { Icon, Button, Modal } from "./components";
+import { ProjectSidebar } from "./project-sidebar";
+import { TodoPanel } from "./todo-panel";
+import { DevelopmentReports } from "./development-reports";
+import { RegionNavigator } from "./region-navigator";
 
 export function ChatPane({
   session,
@@ -17,12 +21,26 @@ export function ChatPane({
   initialText = "",
   inputLabel,
   inputPlaceholder,
+  composerActions,
+  autoGrow = false,
 }) {
   const [text, setText] = useState(initialText),
     [sending, setSending] = useState(false),
     [error, setError] = useState("");
   const scroll = useRef(null);
   const composing = useRef(false);
+  const input = useRef(null);
+  useEffect(() => {
+    if (!autoGrow || !input.current) return;
+    const element = input.current;
+    const resize = () => {
+      element.style.height = "0px";
+      element.style.height = `${Math.min(120, Math.max(44, element.scrollHeight))}px`;
+    };
+    resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, [text, autoGrow]);
   useEffect(() => {
     if (scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight;
   }, [session?.messages?.length, stream]);
@@ -55,18 +73,13 @@ export function ChatPane({
         <div className="chat-messages" ref={scroll} aria-live="polite">
           {session?.messages.map((message) => (
             <div className={`chat-msg ${message.role}`} key={message.id}>
-              <div className="role">
-                {message.role === "user" ? "你" : "CODEX"}
-                {message.partial ? " · 未完成" : ""}
-              </div>
+              {message.partial && <span className="tag">未完成</span>}
               <div className="text">{message.text}</div>
             </div>
           ))}
           {stream && (
             <div className="chat-msg">
-              <div className="role">
-                CODEX <span className="connecting">●</span>
-              </div>
+              <span className="connecting" role="status" aria-label="正在生成">●</span>
               <div className="text">{stream}</div>
             </div>
           )}
@@ -100,6 +113,7 @@ export function ChatPane({
       )}
       <form className="composer" onSubmit={submit}>
         <textarea
+          ref={input}
           aria-label={
             inputLabel ||
             (hub ? "WB 聊天输入" : global ? "全局开发指令" : "局部开发指令")
@@ -134,6 +148,7 @@ export function ChatPane({
             }
           }}
         />
+        {composerActions && <div className="composer-actions">{composerActions}</div>}
         {session?.status === "running" ? (
           <button
             className="send-button"
@@ -152,13 +167,13 @@ export function ChatPane({
               hub ? "发送 WB 消息" : global ? "发送全局指令" : "发送局部指令"
             }
             disabled={busy || sending || !text.trim() || !session}
-            title="发送到 Codex"
+            title="发送到 AI"
           >
             <Icon name="send" />
           </button>
         )}
       </form>
-      {sending && <div className="tool-line connecting">正在接入 Codex…</div>}
+      {sending && <div className="tool-line connecting">正在接入 AI…</div>}
     </>
   );
 }
@@ -241,7 +256,8 @@ export function Approval({ request, onReply }) {
   );
 }
 
-export function Development({ pageId, initialSessionId }) {
+export function Development({ pageId, initialSessionId, onOpenSidebar }) {
+  const [section, setSection] = useState("development");
   const { state, status, notify } = useWB();
   const [page, setPage] = useState(null),
     [sessions, setSessions] = useState({}),
@@ -256,10 +272,45 @@ export function Development({ pageId, initialSessionId }) {
     [reload, setReload] = useState(0);
   const iframe = useRef(),
     pageRef = useRef();
+  const reports = useRef(null);
+  const [versions, setVersions] = useState([]);
+  const workbench = useRef(null);
+  const floatingDock = useRef(null);
+  const selectionSequence = useRef(0);
+  const dismissLocal = useCallback((clearPreview = true) => {
+    selectionSequence.current += 1;
+    setLocal(null);
+    if (clearPreview) iframe.current?.contentWindow.postMessage({ source: "wb-host", type: "clear-selection" }, state.previewOrigin);
+  }, [state.previewOrigin]);
+  useEffect(() => {
+    const outside = (event) => { if (!event.target.closest(".local-chat")) dismissLocal(); };
+    const escape = (event) => { if (event.key === "Escape" && !event.isComposing) dismissLocal(); };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
+  }, [dismissLocal]);
+  useEffect(() => {
+    const area = workbench.current;
+    const dock = floatingDock.current;
+    if (!area || !dock) return;
+    const update = () => {
+      const rect = area.getBoundingClientRect();
+      dock.style.setProperty("--dev-dock-center", `${rect.left + rect.width / 2}px`);
+      dock.style.setProperty("--dev-dock-width", `${Math.max(0, rect.width - 24)}px`);
+      area.style.setProperty("--dev-dock-height", `${dock.offsetHeight + 32}px`);
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(area);
+    observer.observe(dock);
+    window.addEventListener("resize", update);
+    update();
+    return () => { observer.disconnect(); window.removeEventListener("resize", update); };
+  }, [page?.id, state.previewOrigin]);
   pageRef.current = page;
   const loadSessions = useCallback(async () => {
     const data = await api(`/pages/${pageId}`);
     setPage(data.page);
+    setVersions(data.versions);
     setSessions(Object.fromEntries(data.sessions.map((s) => [s.id, s])));
     return data;
   }, [pageId]);
@@ -364,31 +415,38 @@ export function Development({ pageId, initialSessionId }) {
       )
         return;
       const data = event.data;
+      if (data.type === "selection-invalid") { dismissLocal(); notify("页面结构已变化，请重新选择区域"); }
+      if (data.type === "dismiss-local") dismissLocal(false);
       if (data.type === "selection") {
+        const request = ++selectionSequence.current;
         setPick(false);
         const anchor = data.anchor;
         if (!anchor || typeof anchor.key !== "string") return;
         try {
           const session = await api(`/pages/${pageId}/session`, { anchor });
+          if (request !== selectionSequence.current) return;
           setSessions((prev) => ({ ...prev, [session.id]: session }));
           const frame = iframe.current.getBoundingClientRect();
           const width = Math.min(365, innerWidth - 24);
-          setLocal({
+          setLocal((previous) => ({
             sessionId: session.id,
             anchor,
-            x: Math.max(
+            hierarchy: data.hierarchy,
+            navigating: false,
+            x: data.navigation && previous ? previous.x : Math.max(
               12,
               Math.min(
                 frame.left + anchor.rect.x + Math.min(anchor.rect.width, 160),
                 innerWidth - width - 12,
               ),
             ),
-            y: Math.max(
+            y: data.navigation && previous ? previous.y : Math.max(
               70,
-              Math.min(frame.top + anchor.rect.y, innerHeight - 440),
+              Math.min(frame.top + anchor.rect.y + (anchor.kind === "project-text" ? anchor.rect.height + 8 : 0), innerHeight - 440),
             ),
-          });
+          }));
         } catch (err) {
+          setLocal((previous) => previous ? { ...previous, navigating: false } : previous);
           notify(err.message);
         }
       }
@@ -396,7 +454,7 @@ export function Development({ pageId, initialSessionId }) {
     };
     window.addEventListener("message", listener);
     return () => window.removeEventListener("message", listener);
-  }, [pageId, state.previewOrigin, notify]);
+  }, [pageId, state.previewOrigin, notify, dismissLocal]);
   const togglePick = () => {
     const value = !pick;
     setPick(value);
@@ -405,13 +463,13 @@ export function Development({ pageId, initialSessionId }) {
       state.previewOrigin,
     );
   };
-  const send = async (sessionId, message) => {
+  const send = async (sessionId, message, anchor) => {
     setSubmitting(true);
     try {
       const session = sessions[sessionId];
       const result = await api("/agent/turn", {
         pageId,
-        anchor: session.anchor,
+        anchor: anchor || session.anchor,
         message,
       });
       setSessions((prev) => ({ ...prev, [result.id]: result }));
@@ -439,9 +497,12 @@ export function Development({ pageId, initialSessionId }) {
   if (!page || !state.previewOrigin)
     return <div className="loading">正在准备项目专属开发窗口…</div>;
   return (
+    <div className="project-development-layout">
+      <ProjectSidebar page={page} active={section} onSelect={(key) => ["development", "todo"].includes(key) ? setSection(key) : go(`/page/${pageId}/${key}`)} />
     <div className="dev-shell">
       <header className="dev-toolbar">
         <div className="dev-title">
+          <Button icon="sidebar" quiet className="icon sidebar-toggle" aria-label="打开侧边栏" onClick={onOpenSidebar} />
           <Button
             icon="back"
             quiet
@@ -475,8 +536,25 @@ export function Development({ pageId, initialSessionId }) {
           </Button>
         </div>
       </header>
+      <div className="dev-workspace">
+      <DevelopmentReports ref={reports} sessions={sessions} streams={streams} page={page} versions={versions} busy={busy} onRestore={async (versionId) => {
+        const latest = await api(`/pages/${pageId}`);
+        if (latest.sessions.some((s) => s.status === "running")) throw new Error("请等待 AI 任务结束后再恢复资料版本");
+        await api(`/pages/${pageId}/restore`, { versionId });
+        await loadSessions();
+        notify("管理资料已恢复，代码文件未改动");
+      }} onSave={async (patch) => {
+        await api(`/pages/${pageId}`, { ...patch, expectedRevision: page.revision }, "PATCH");
+        await loadSessions();
+      }} />
+      <div className="dev-workbench" ref={workbench}>
       <div className="dev-surface">
+        {section === "todo" && <div className="development-todos"><TodoPanel page={page} onSave={async (patch) => {
+          await api(`/pages/${pageId}`, { ...patch, expectedRevision: page.revision }, "PATCH");
+          await loadSessions();
+        }} /></div>}
         <iframe
+          hidden={section !== "development"}
           key={reload}
           ref={iframe}
           title="目标项目开发预览"
@@ -497,26 +575,22 @@ export function Development({ pageId, initialSessionId }) {
           </div>
         )}
       </div>
-      <section className="dev-dock" aria-label="全局开发聊天窗口">
-        <div className="dock-head">
-          <div className="dock-label">
-            <Icon name="chat" />
-            <strong>项目开发</strong>
-            <span className="scope">全局</span>
-          </div>
-          <div className="agent-indicator">
-            <span className={`status-dot ${busy ? "connecting" : ""}`} />
-            {busy ? "Codex 正在工作" : "Codex"}
-            <span style={{ marginLeft: 8 }}>同一项目 · 持续会话</span>
-          </div>
-        </div>
+      <section className="dev-dock" ref={floatingDock} aria-label="全局开发聊天窗口">
         <ChatPane
+          composerOnly
+          autoGrow
+          inputPlaceholder="描述你想实现的功能或修改…"
+          composerActions={<>
+            <span className="composer-agent">{(sessions[globalId]?.provider || (sessions[globalId]?.threadId ? "codex" : status?.provider)) === "claude" ? "Claude Code" : "Codex"}</span>
+            <span className="composer-agent">项目开发</span>
+            <Button type="button" quiet small onClick={() => reports.current?.latest()}><Icon name="arrow" className="latest-reply-icon" />最新回复</Button>
+          </>}
           session={sessions[globalId]}
           stream={streams[globalId]}
-          tool={tools[globalId]}
+          tool={busy ? tools[globalId] : ""}
           busy={busy}
           global
-          onSend={(message) => send(globalId, message)}
+          onSend={(message) => { reports.current?.latest(); return send(globalId, message); }}
           onStop={() => stop(globalId)}
         />
         <div className="dock-footer">
@@ -524,6 +598,8 @@ export function Development({ pageId, initialSessionId }) {
           <span>Enter 发送 · Shift+Enter 换行</span>
         </div>
       </section>
+      </div>
+      </div>
       {local && (
         <aside
           className="local-chat"
@@ -540,20 +616,25 @@ export function Development({ pageId, initialSessionId }) {
               icon="close"
               className="icon"
               aria-label="关闭局部聊天"
-              onClick={() => setLocal(null)}
+              onClick={dismissLocal}
             />
           </div>
           <div className="chat-body">
+            <RegionNavigator hierarchy={local.hierarchy} pending={local.navigating} onNavigate={(nodeId) => {
+              setLocal((previous) => ({ ...previous, navigating: true }));
+              iframe.current?.contentWindow.postMessage({ source: "wb-host", type: "navigate-selection", token: local.hierarchy.token, nodeId }, state.previewOrigin);
+            }} />
             <div className="selection-label mono">
               {local.anchor.sourceFile} · {local.anchor.selector}
             </div>
             <ChatPane
-              key={local.sessionId}
+              key="local-project-composer"
+              composerOnly
+              inputPlaceholder={local.anchor.kind === "project-text" ? "描述要怎样修改选中的文字或所在区域…" : "描述要怎样修改这个区域…"}
               session={sessions[local.sessionId]}
               stream={streams[local.sessionId]}
-              tool={tools[local.sessionId]}
-              busy={busy}
-              onSend={(message) => send(local.sessionId, message)}
+              busy={busy || local.navigating}
+              onSend={(message) => { reports.current?.latest(); return send(local.sessionId, message, local.anchor); }}
               onStop={() => stop(local.sessionId)}
             />
           </div>
@@ -569,6 +650,7 @@ export function Development({ pageId, initialSessionId }) {
           }}
         />
       )}
+    </div>
     </div>
   );
 }

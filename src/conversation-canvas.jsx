@@ -1,7 +1,7 @@
 import React, { memo, useState, useRef } from "react";
 import { contentBlocks, safeLink } from "./content-blocks.mjs";
 import { Icon, Button } from "./components";
-import { timeLabel } from "./api";
+import { api, timeLabel } from "./api";
 import { SelectionThread, useTextSelection } from "./selection-threads";
 import { ThreadLabels } from "./thread-labels";
 
@@ -154,9 +154,7 @@ const Message = memo(function Message({ message, streaming = false }) {
         className={`chat-msg canvas-message ${user ? "user" : "assistant"} ${streaming ? "is-streaming" : ""}`}
       >
         <div className="canvas-message-head">
-          <span className="canvas-role">
-            <Icon name={user ? "chat" : "spark"} />
-            {user ? "你的提问" : "AI 回复"}
+          <span className="canvas-message-state">
             {streaming && (
               <span className="tag">
                 <span className="status-dot connecting" />
@@ -165,8 +163,28 @@ const Message = memo(function Message({ message, streaming = false }) {
             )}
             {message.partial && <span className="tag amber">未完成</span>}
           </span>
-          {message.at && <time>{timeLabel(message.at)}</time>}
+          <div className="canvas-message-tools">
+            {message.at && <time>{timeLabel(message.at)}</time>}
+            {!user && !streaming && (
+              <Button
+                quiet
+                className="icon canvas-copy"
+                icon={copied === "已复制" ? "check" : "copy"}
+                aria-label={copied || "复制回复"}
+                title={copied || "复制回复"}
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(message.text);
+                    setCopied("已复制");
+                  } catch {
+                    setCopied("复制失败，请从原文复制");
+                  }
+                }}
+              />
+            )}
+          </div>
         </div>
+        {copied && <span className="canvas-copy-status" role="status">{copied}</span>}
         {!user && !streaming && (
           <details className="canvas-message-original">
             <summary>查看原文</summary>
@@ -185,24 +203,6 @@ const Message = memo(function Message({ message, streaming = false }) {
         ) : (
           <StructuredContent text={message.text} selectable={!streaming} />
         )}
-        {!user && !streaming && (
-          <div className="canvas-message-actions">
-            <Button
-              small
-              quiet
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(message.text);
-                  setCopied("已复制");
-                } catch {
-                  setCopied("复制失败，请从原文复制");
-                }
-              }}
-            >
-              {copied || "复制回复"}
-            </Button>
-          </div>
-        )}
       </article>
     </div>
   );
@@ -217,6 +217,7 @@ export function ConversationCanvas({
 }) {
   const root = useRef(null);
   const [popupRoot, setPopupRoot] = useState(null);
+  const [highlightStatus, setHighlightStatus] = useState({});
   const { selection, threads, error, save, open, close } = useTextSelection(
     pageId,
     root,
@@ -227,9 +228,12 @@ export function ConversationCanvas({
     const article = root.current?.querySelector(
       `[data-message-id="${thread.anchor.messageId}"]`,
     );
-    article
-      ?.querySelector(`[data-block-index="${thread.anchor.blockIndex}"]`)
-      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    const source = article?.querySelector(`[data-block-index="${thread.anchor.blockIndex}"]`);
+    const sourcePanel = source?.closest(".zone-b-content, .zone-c-content");
+    if (sourcePanel) sourcePanel.scrollTo({
+      top: sourcePanel.scrollTop + source.getBoundingClientRect().top - sourcePanel.getBoundingClientRect().top - sourcePanel.clientHeight / 2,
+      behavior: "smooth",
+    });
     const rect = event.currentTarget.getBoundingClientRect();
     if (showPopup) open(
       { ...thread.anchor, x: rect.right + 8, y: rect.top },
@@ -300,7 +304,28 @@ export function ConversationCanvas({
             >
               搜索相关资源
             </Button>
+            <Button small
+              disabled={highlightStatus[selection.key] === "saving" || highlightStatus[selection.key] === "saved"}
+              onClick={async () => {
+                const selected = selection;
+                setHighlightStatus((prev) => ({ ...prev, [selected.key]: "saving" }));
+                try {
+                  await api(`/pages/${pageId}/records`, {
+                    kind: "highlight",
+                    title: selected.quote.replace(/\s+/g, " ").slice(0, 32),
+                    raw: selected.quote,
+                    origin: selected.parentThreadKey ? "子对话选段" : "主对话选段",
+                    source: { messageId: selected.messageId, sessionId: selected.sourceSessionId || session?.id, parentThreadKey: selected.parentThreadKey },
+                  });
+                  setHighlightStatus((prev) => ({ ...prev, [selected.key]: "saved" }));
+                } catch (err) {
+                  setHighlightStatus((prev) => ({ ...prev, [selected.key]: err.message }));
+                }
+              }}
+            >{highlightStatus[selection.key] === "saved" ? "已保存" : highlightStatus[selection.key] === "saving" ? "保存中…" : "保存信息"}</Button>
           </div>
+          {highlightStatus[selection.key] === "saved" && <p role="status" className="selection-hint">已保存到「资料与管理 → 重点」</p>}
+          {highlightStatus[selection.key] && !["saving", "saved"].includes(highlightStatus[selection.key]) && <p role="alert">保存失败：{highlightStatus[selection.key]}</p>}
           <div ref={setPopupRoot} />
         </div>
       )}
@@ -320,6 +345,8 @@ export function ConversationCanvas({
           <h3 className="zone-heading">
             <span>B</span> 主对话
           </h3>
+          <div className="zone-b-content" tabIndex={0} role="region" aria-label="主对话滚动区">
+          <div className="zone-b-flow">
           <div className="canvas-messages">
             {session?.messages.map((message) => (
               <Message key={message.id} message={message} />
@@ -347,12 +374,14 @@ export function ConversationCanvas({
             </div>
           )}
           <div className="canvas-latest" />
+          </div>
+          </div>
         </section>
         <aside className="conversation-zone zone-c" aria-label="C 子对话回复">
           <h3 className="zone-heading">
             <span>C</span> 子对话回复
           </h3>
-          <div className="zone-c-content">
+          <div className="zone-c-content" tabIndex={0} role="region" aria-label="子对话滚动区">
             {!hasReplies && (
               <p className="zone-empty">
                 选段追问的回答会集中展示在这里，不混入主对话。

@@ -116,7 +116,6 @@ export function SelectionThread({
               key={message.id}
               data-message-id={message.id}
             >
-              <small>{message.role === "user" ? "你的追问" : "AI 回复"}</small>
               {renderContent(message.text, true)}
             </div>
           ))}

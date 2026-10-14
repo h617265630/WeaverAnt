@@ -11,7 +11,7 @@ import {
 import { resolve, join, extname, dirname, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Store } from "./store.mjs";
-import { CodexAgent } from "./codex.mjs";
+import { Agents } from "./agents.mjs";
 import { renderPage, escapeHtml } from "./render.mjs";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -99,7 +99,7 @@ export async function startServer({
   const clients = new Set();
   const signatures = new Map(),
     previewSignatures = new Map();
-  const agent = agentFactory ? agentFactory(store) : new CodexAgent(store);
+  const agent = agentFactory ? agentFactory(store) : new Agents(store);
   const broadcast = (event) => {
     for (const client of clients)
       client.write(`data: ${JSON.stringify(event)}\n\n`);
@@ -194,6 +194,10 @@ export async function startServer({
         }
         if (path === "/api/agent/status")
           return json(res, await agent.status());
+        if (path === "/api/agent/settings" && req.method === "POST") {
+          agent.configure(await body(req));
+          return json(res, await agent.status());
+        }
         if (path === "/api/agent/approvals" && req.method === "GET")
           return json(
             res,
@@ -206,7 +210,7 @@ export async function startServer({
             })),
           );
         if (path === "/api/agent/connect" && req.method === "POST") {
-          await agent.connect();
+          await agent.connect((await body(req)).provider);
           return json(res, await agent.status());
         }
         if (path === "/api/agent/turn" && req.method === "POST") {
@@ -418,7 +422,7 @@ export async function startServer({
           "Cache-Control": "no-store",
         });
         return res.end(
-          `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><style>body{margin:0;display:grid;place-content:center;height:100vh;background:#f7f8fa;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;text-align:center;color:#28353b}.icon{font-size:48px;color:#739380}h1{font-size:26px;font-weight:500}p{font-size:14px;color:#8a9399;line-height:1.8}</style><div class="icon">✧</div><h1>从第一条开发指令开始</h1><p>「${escapeHtml(page.title)}」的开发空间已就绪。<br>在下方告诉 Codex 你想做什么，页面将在这里出现。</p></html>`,
+          `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;display:grid;place-content:center;min-height:100dvh;box-sizing:border-box;padding:24px;background:#fff;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;text-align:center;color:#202020}h1{font-size:24px;font-weight:500;letter-spacing:-.5px;margin:0 0 14px}p{font-size:14px;color:#888;line-height:1.9;margin:0}</style><h1>从一个想法开始</h1><p>「${escapeHtml(page.title)}」已就绪<br>在下方描述你想实现的功能</p></html>`,
         );
       }
       const real = realpathSync(file);

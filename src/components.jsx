@@ -16,6 +16,7 @@ export function Icon({ name = "spark", ...props }) {
     layers: "m12 3 10 5-10 5L2 8zM2 12l10 5 10-5M2 16l10 5 10-5",
     code: "m8 5-7 7 7 7m8-14 7 7-7 7m-3-16-2 18",
     check: "m5 12 4 4L20 5",
+    copy: "M9 9h12v12H9zM5 15H3V3h12v2",
     close: "m6 6 12 12M6 18 18 6",
     back: "M19 12H5m6-6-6 6 6 6",
     send: "M12 20V4m-6 6 6-6 6 6",

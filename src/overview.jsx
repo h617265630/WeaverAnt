@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useWB } from "./context";
-import { timeLabel, go } from "./api";
+import { api, timeLabel, go } from "./api";
 import { Icon, Button, Empty } from "./components";
 
 export function Dashboard({ filter = "all" }) {
@@ -322,39 +322,65 @@ export function Architecture() {
   );
 }
 export function Settings() {
-  const { status, connect, setModal } = useWB();
+  const { status, connect, refreshStatus, notify } = useWB();
+  const [provider, setProvider] = useState(null);
+  const [claudeBinary, setClaudeBinary] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const codex = status?.codex || status;
   return (
     <div className="page">
       <div className="eyebrow">CONNECTIONS & PREFERENCES</div>
       <h1 className="page-title">沿用你熟悉的 AI 能力</h1>
       <p className="page-subtitle">
-        模型和工具由 Codex 提供。WB 管理界面、位置上下文与开发记录。
+        选择 Codex 或 Claude Code 提供模型和工具。WB 管理界面、位置上下文与开发记录。
       </p>
+      <section className="module" style={{ marginTop: 28 }} aria-label="AI 接入设置">
+        <h3>默认 AI</h3>
+        <label className="field">新会话使用
+          <select aria-label="默认 AI" value={provider ?? status?.settings?.provider ?? "codex"} onChange={(event) => setProvider(event.target.value)}>
+            <option value="codex">Codex</option>
+            <option value="claude">Claude Code</option>
+          </select>
+        </label>
+        <label className="field">Claude Code 可执行文件路径（可选）
+          <input aria-label="Claude Code 可执行文件路径" placeholder="留空自动检测 CLI 或 VS Code 插件" value={claudeBinary ?? status?.settings?.claudeBinary ?? ""} onChange={(event) => setClaudeBinary(event.target.value)} />
+        </label>
+        <p>只填写 claude 程序的完整路径，不要填写 API Key 或命令参数。切换后新会话使用所选 AI；已有会话继续使用原 AI。</p>
+        <Button disabled={saving} onClick={async () => {
+          setSaving(true);
+          try {
+            await api("/agent/settings", { provider: provider ?? status?.settings?.provider ?? "codex", claudeBinary: claudeBinary ?? status?.settings?.claudeBinary ?? "" });
+            await refreshStatus();
+            notify("AI 设置已保存，新会话将使用所选 AI");
+          } catch (error) { notify(error.message); }
+          finally { setSaving(false); }
+        }}>{saving ? "保存中…" : "保存 AI 设置"}</Button>
+      </section>
       <div className="module" style={{ marginTop: 28 }}>
         <div className="module-head">
           <h3>Codex</h3>
           <span className="tag">
-            {status?.connected
+            {codex?.connected
               ? "进程已连接"
-              : status?.available
+              : codex?.available
                 ? "已检测到"
                 : "未检测到"}
           </span>
         </div>
         <p>
-          {status?.version || "在本机安装 Codex 后，可以在这里连接。"}
+          {codex?.version || "在本机安装 Codex 后，可以在这里连接。"}
           <br />
           连接时使用本机 Codex
           的现有配置。已有插件会话不会自动搬入新窗口；本产品的会话会持续保存。
         </p>
         <div className="actions" style={{ marginTop: 17 }}>
-          <Button icon="link" primary onClick={connect}>
+          <Button icon="link" primary onClick={() => connect("codex")}>
             连接 / 检查 Codex
           </Button>
         </div>
-        {status?.connected && (
+        {codex?.connected && (
           <div className="notice">
-            {status.signedIn
+            {codex.signedIn
               ? "已读取到本机登录状态。发送指令将实际使用你的 Codex 账户。"
               : "尚未确认登录状态。请先在 Codex 中完成登录。"}
           </div>
@@ -363,9 +389,13 @@ export function Settings() {
       <div className="module">
         <div className="module-head">
           <h3>Claude Code</h3>
-          <span className="tag amber">尚未接入</span>
+          <span className="tag">{status?.claude?.available ? status.claude.signedIn ? "已检测到 · 已登录" : "已检测到 · 待登录" : "未检测到"}</span>
         </div>
-        <p>已预留 Agent 适配边界。当前版本不显示虚假的 CC 连接或生成结果。</p>
+        <p>{status?.claude?.version || "支持本机 Claude Code CLI 与 VS Code 插件内置程序。"}</p>
+        {status?.claude?.binary && <p style={{ overflowWrap: "anywhere" }}>检测路径：{status.claude.binary}</p>}
+        <p>使用本机 Claude Code 的登录与配置，不导入 VS Code 中的既有聊天。支持流式回复、独立子对话、续聊、停止及 WB MCP 工具。</p>
+        <p>保留 Claude Code 权限限制，不使用跳过权限模式。当前 WB 不弹出 Claude 工具授权窗口：未获授权的文件修改或命令会被拒绝，请在 Claude Code 中配置所需权限后重试。运行可能使用你的账户额度。</p>
+        <Button icon="link" onClick={() => connect("claude")}>检查 Claude Code</Button>
       </div>
       <div className="module">
         <h3>WB 内置聊天已经连接内容工具</h3>

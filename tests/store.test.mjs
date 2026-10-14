@@ -14,6 +14,19 @@ function fixture(t) {
   });
   return store;
 }
+test("saved highlights preserve full text and source and deduplicate within a page", (t) => {
+  const s = fixture(t);
+  const page = s.create({ title: "重点测试" });
+  const input = { kind: "highlight", title: "重点", raw: "完整原文\n第二行", source: { messageId: "message-1", sessionId: "session-1", parentThreadKey: "thread-1" } };
+  const saved = s.record(page.id, input);
+  assert.equal(saved.kind, "highlight");
+  assert.deepEqual(saved.source, input.source);
+  assert.equal(s.record(page.id, input).id, saved.id);
+  assert.equal(s.records(page.id).length, 1);
+  assert.equal(s.records(page.id)[0].raw, input.raw);
+  const other = s.create({ title: "另一对话" });
+  assert.notEqual(s.record(other.id, input).id, saved.id);
+});
 test("question promotion preserves source data and creates a distinct target project", (t) => {
   const s = fixture(t);
   const q = s.create({

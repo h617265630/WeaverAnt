@@ -4,8 +4,11 @@ import { useWB } from "./context";
 import { Icon, Button, Empty } from "./components";
 import { HubChat } from "./hub-chat";
 import { ResourcePanel } from "./resource-panel";
+import { HighlightPanel } from "./highlight-panel";
+import { ProjectSidebar } from "./project-sidebar";
+import { TodoPanel } from "./todo-panel";
 
-export function PageView({ pageId }) {
+export function PageView({ pageId, initialTab = "overview" }) {
   const { state, refresh, notify, setModal, createProject } = useWB();
   const [managementOpen, setManagementOpen] = useState(
     () => window.innerWidth > 1100,
@@ -16,7 +19,7 @@ export function PageView({ pageId }) {
     managementToggle.current?.focus();
   };
   const [detail, setDetail] = useState(null),
-    [tab, setTab] = useState("overview"),
+    [tab, setTab] = useState(initialTab),
     [error, setError] = useState("");
   const load = useCallback(async () => {
     try {
@@ -32,6 +35,7 @@ export function PageView({ pageId }) {
       if (
         [
           "state-changed",
+          "files-changed",
           "turn-completed",
           "message-completed",
           "tool",
@@ -242,21 +246,22 @@ export function PageView({ pageId }) {
     done = tasks.filter((i) => i.done).length;
   return (
     <div
-      className={`page ${page.kind === "question" ? `conversation-page with-management ${managementOpen ? "management-open" : ""}` : ""}`}
+      className={`page ${page.kind === "question" ? `conversation-page with-management ${managementOpen ? "management-open" : ""}` : "project-management-page"}`}
     >
       {page.kind === "question" && (
         <div className="conversation-main">
-          <header className="conversation-toolbar">
-            <h1 className="page-title">{page.title}</h1>
+          <header className={`conversation-toolbar ${managementOpen ? "" : "management-folded"}`}>
             <button
               ref={managementToggle}
-              className="btn"
+              className="btn management-toggle"
+              title={managementOpen ? "折叠资料与管理" : "展开资料与管理"}
               aria-expanded={managementOpen}
               aria-controls="wb-management"
               onClick={() => setManagementOpen(!managementOpen)}
             >
               <Icon name="sidebar" />
-              资料与管理
+              <span>资料与管理</span>
+              {!managementOpen && <Icon name="chevron" className="management-expand-arrow" />}
             </button>
           </header>
           <HubChat
@@ -266,10 +271,11 @@ export function PageView({ pageId }) {
           />
         </div>
       )}
+      {page.kind === "project" && <ProjectSidebar page={page} active={tab} onSelect={(key) => key === "development" ? go(`/develop/${page.id}`) : setTab(key)} />}
       <ManagementContainer
         id={page.kind === "question" ? "wb-management" : undefined}
         className={
-          page.kind === "question" ? "wb-management-sidebar" : undefined
+          page.kind === "question" ? "wb-management-sidebar" : "project-management-content"
         }
         aria-label={page.kind === "question" ? "资料与管理" : undefined}
         hidden={page.kind === "question" && !managementOpen}
@@ -284,8 +290,9 @@ export function PageView({ pageId }) {
             <Button
               quiet
               small
-              icon="close"
+              icon="sidebar"
               aria-label="收起资料与管理"
+              title="折叠资料与管理"
               onClick={closeManagement}
             />
           </div>
@@ -333,10 +340,11 @@ export function PageView({ pageId }) {
             )}
           </div>
         </div>
-        <nav className="tabs">
+        {page.kind === "question" && <nav className="tabs">
           {[
             ["overview", "项目概览"],
             ["resources", "资源"],
+            ["highlights", "重点"],
             ["records", "原始记录"],
             ...(page.kind === "project"
               ? [
@@ -357,7 +365,8 @@ export function PageView({ pageId }) {
                 : label}
             </button>
           ))}
-        </nav>
+        </nav>}
+        {page.kind === "project" && tab === "todo" && <TodoPanel page={page} onSave={(patch) => save(patch, "Todo 已保存")} />}
         {tab === "overview" && (
           <div className="management-layout">
             <div>
@@ -591,6 +600,7 @@ export function PageView({ pageId }) {
             </aside>
           </div>
         )}
+        {tab === "highlights" && <HighlightPanel pageId={page.id} records={records} />}
         {tab === "resources" && (
           <ResourcePanel page={page} sessions={sessions} />
         )}
