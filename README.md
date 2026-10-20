@@ -1,5 +1,7 @@
 # WeaverAnt
 
+English | [简体中文](README.zh-CN.md)
+
 **A page-first AI workspace for conversations, project planning, and assisted development.**
 
 Turn a conversation into a workspace you can navigate, edit, and build in—not just a transcript you scroll through.
