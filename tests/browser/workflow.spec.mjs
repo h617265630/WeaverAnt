@@ -788,6 +788,38 @@ test("local region hierarchy navigates nested elements and sends the updated tar
   await expect(popup.getByRole("button", { name: "选父级 ↑", exact: true })).toBeDisabled();
 });
 
+test("design suggestions preview cards and fill scoped instructions without automatically sending", async ({ page }) => {
+  const turns = [];
+  page.on("request", (request) => { if (request.url().endsWith("/api/agent/turn")) turns.push(request.postDataJSON()); });
+  await page.goto("/#/projects");
+  await page.getByRole("button", { name: "体验记账 App 示例" }).last().click();
+  await page.frameLocator("iframe").getByRole("heading", { name: "每一笔，都好好记录。" }).dblclick();
+  const popup = page.getByLabel("局部 AI 聊天窗口");
+  const input = popup.getByLabel("局部开发指令");
+  await input.fill("保留我的要求");
+  await popup.getByRole("button", { name: "配色卡", exact: true }).click();
+  await popup.getByRole("button", { name: /清爽蓝/ }).click();
+  await expect(popup.locator(".design-color-values")).toContainText("#1D4ED8");
+  await popup.getByRole("button", { name: "将「清爽蓝」填入指令" }).click();
+  await expect(input).toHaveValue(/保留我的要求[\s\S]*#1D4ED8/);
+  expect(turns).toHaveLength(0);
+  await popup.getByRole("button", { name: "UI 组件", exact: true }).click();
+  await popup.getByRole("button", { name: /信息卡片/ }).click();
+  await popup.getByRole("button", { name: "将「信息卡片」填入指令" }).click();
+  await expect(input).toHaveValue(/响应式信息卡片/);
+  expect(turns).toHaveLength(0);
+  await input.fill("");
+  await popup.getByRole("button", { name: "AI 建议", exact: true }).click();
+  await popup.getByRole("button", { name: "怎么改更好", exact: true }).click();
+  await expect(input).toHaveValue(/只提供建议，不修改文件/);
+  expect(turns).toHaveLength(0);
+  await input.press("Enter");
+  await expect(page.locator(".development-reports .chat-msg").last()).toContainText("测试回复");
+  expect(turns).toHaveLength(1);
+  expect(turns[0].anchor.kind).toBe("project-element");
+  await expect(popup.locator(".chat-msg")).toHaveCount(0);
+});
+
 test("double click selects the containing div and keeps a visible region highlight", async ({ page }) => {
   const turns = [];
   page.on("request", (request) => { if (request.url().endsWith("/api/agent/turn")) turns.push(request.postDataJSON()); });
@@ -908,11 +940,46 @@ test("real React target app, scoped popup chat, separate histories and WB record
   );
   await page.getByRole("button", { name: "WB 管理" }).click();
   await expect(page.locator(".shell > .sidebar")).toBeHidden();
-  await expect(
-    page.getByRole("region", { name: "之前的开发对话" }),
-  ).toContainText("请调整这个卡片");
+  await expect(page.getByRole("region", { name: "之前的开发对话" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "添加内容模块", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "同步记录", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "原始记录", exact: true }).click();
   await expect(page.getByText("2 条消息", { exact: false })).toHaveCount(2);
+});
+
+test("sidebar opens a selected local project and reuses its existing workspace", async ({ page }) => {
+  await page.goto("/#/projects");
+  await page.getByRole("button", { name: "体验记账 App 示例" }).last().click();
+  await expect(page.getByLabel("全局开发指令")).toBeVisible();
+  const destination = page.url();
+  const projectId = destination.split("/develop/")[1];
+  const rootPath = await page.evaluate(async (id) => {
+    const response = await fetch(`/api/pages/${id}`, { headers: { "X-WB-Token": document.querySelector('meta[name="wb-token"]').content } });
+    return (await response.json()).page.rootPath;
+  }, projectId);
+  await page.route("**/api/local-projects/choose", (route) => route.fulfill({ json: { path: rootPath } }));
+  await page.getByRole("button", { name: "打开侧边栏", exact: true }).click();
+  await page.getByRole("button", { name: "打开本地 Web 项目", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "打开本地 Web 项目" });
+  await expect(dialog.getByRole("button", { name: "打开并继续开发" })).toBeDisabled();
+  await dialog.getByRole("button", { name: "选择文件夹" }).click();
+  await expect(dialog.getByLabel("本地项目路径")).toHaveValue(rootPath);
+  await dialog.getByRole("button", { name: "打开并继续开发" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page).toHaveURL(destination);
+  await expect(page.getByLabel("全局开发指令")).toBeVisible();
+});
+
+test("project creation can skip planning and open development directly", async ({ page }) => {
+  await page.goto("/#/projects");
+  await page.getByRole("button", { name: /让一个想法落地/ }).click();
+  await page.getByLabel("项目名称", { exact: true }).fill("直接开发测试");
+  await page.getByLabel("启动方式").selectOption("develop");
+  await page.getByRole("button", { name: "创建项目并继续" }).click();
+  await expect(page).toHaveURL(/\/develop\/project_/);
+  await expect(page.getByLabel("全局开发指令")).toBeVisible();
+  await page.getByRole("button", { name: "项目规划", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "项目规划", exact: true })).toBeVisible();
 });
 
 test("question editing, standalone export, promotion, settings and mobile layout", async ({
@@ -934,7 +1001,22 @@ test("question editing, standalone export, promotion, settings and mobile layout
   await page.getByRole("button", { name: "导出", exact: true }).click();
   expect((await download).suggestedFilename()).toMatch(/\.html$/);
   await page.getByRole("button", { name: "启动项目", exact: true }).click();
-  await page.getByRole("button", { name: "启动项目，打开开发窗口" }).click();
+  await page.getByLabel("启动方式").selectOption("plan");
+  await page.getByRole("button", { name: "创建项目并继续" }).click();
+  await expect(page).toHaveURL(/\/page\/project_.*\/overview/);
+  await expect(page.getByRole("heading", { name: "项目规划", exact: true })).toBeVisible();
+  await expect(page.getByText("用户亲自修改的结论。", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "编辑规划" }).click();
+  await page.getByLabel("第一版范围", { exact: true }).fill("只实现记录与查询，暂不做支付");
+  await page.getByRole("checkbox", { name: /优先使用 React/ }).check();
+  await page.getByLabel("参考项目", { exact: true }).fill("示例 / https://example.com / 借鉴导航结构，不复制素材");
+  await page.getByRole("button", { name: "保存规划" }).click();
+  await expect(page.getByRole("button", { name: "编辑规划" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("项目规划设置")).toContainText("只实现记录与查询");
+  await expect(page.getByLabel("项目规划设置")).toContainText("优先使用 React");
+  await expect(page.getByLabel("项目规划设置")).toContainText("https://example.com");
+  await page.getByRole("button", { name: "进入开发窗口", exact: true }).click();
   await expect(page.getByLabel("全局开发指令")).toBeVisible();
   await page.getByLabel("返回 WB").click();
   await page.getByRole("button", { name: "同步设置", exact: true }).click();
@@ -944,16 +1026,20 @@ test("question editing, standalone export, promotion, settings and mobile layout
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await expect(page.getByLabel("WB 聊天输入")).toBeVisible();
+  await page.getByLabel("WB 聊天输入").fill("规划流程的独立历史记录");
+  await page.getByLabel("WB 聊天输入").press("Enter");
+  await expect(page.locator(".canvas-message.assistant")).toHaveCount(1);
+  await page.goto("/");
   await page.getByRole("button", { name: "打开侧边栏" }).click();
   await expect(page.getByRole("dialog", { name: "导航菜单" })).toBeVisible();
   await page
     .getByRole("dialog")
     .getByRole("region", { name: "历史对话" })
-    .getByRole("link", { name: "你好", exact: true })
+    .getByRole("link", { name: "规划流程的独立历史记录", exact: true })
     .click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.locator(".hub-chat .chat-msg").first()).toContainText(
-    "你好",
+  await expect(page.locator(".canvas-message.user").first()).toContainText(
+    "规划流程的独立历史记录",
   );
   await page.goto("/");
   expect(

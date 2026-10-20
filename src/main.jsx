@@ -9,6 +9,7 @@ import { Development } from "./development";
 import { Search } from "./search";
 import { Sidebar } from "./sidebar";
 import { HubChat } from "./hub-chat";
+import { OpenLocalProject } from "./open-local-project";
 
 function MobileSidebar({ children, onClose }) {
   const ref = useRef(null);
@@ -141,8 +142,18 @@ function App() {
       type: "form",
       title: source ? "从问答启动项目" : "启动新项目",
       description:
-        "将创建专属 WB 和开发窗口。底部聊天框立即就绪，页面可以在开发过程中逐步生成。",
+        "可以先明确目标、开发规范和参考项目，也可以跳过详细规划，直接进入开发窗口。",
       fields: [
+        {
+          name: "startMode",
+          label: "启动方式",
+          type: "select",
+          value: "plan",
+          options: [
+            { value: "plan", label: "先规划：确定目标、规范和参考项目" },
+            { value: "develop", label: "直接开始：边开发边完善" },
+          ],
+        },
         {
           name: "title",
           label: "项目名称",
@@ -164,7 +175,7 @@ function App() {
           hint: "开发指令只在绑定的目标项目中执行。",
         },
       ],
-      submitLabel: "启动项目，打开开发窗口",
+      submitLabel: "创建项目并继续",
       onSubmit: async (input) => {
         let page;
         if (source) {
@@ -201,7 +212,7 @@ function App() {
             ],
           });
         await refresh();
-        go(`/develop/${page.id}`);
+        go(input.startMode === "plan" ? `/page/${page.id}/overview` : `/develop/${page.id}`);
       },
     });
   const openDemo = async () => {
@@ -230,6 +241,15 @@ function App() {
       refreshStatus();
     }
   };
+  const openLocalProject = () => setModal({
+    title: "打开本地 Web 项目",
+    content: <OpenLocalProject onOpened={async ({ page, reused }) => {
+      await refresh();
+      closeModal();
+      go(`/develop/${page.id}`);
+      notify(reused ? "已打开原有 WB 项目" : "已绑定本地项目，原文件保持不变");
+    }} />,
+  });
   const context = {
     state,
     refresh,
@@ -238,6 +258,7 @@ function App() {
     closeModal,
     createQuestion,
     createProject,
+    openLocalProject,
     openDemo,
     status,
     connect,

@@ -26,7 +26,7 @@ function fixture(t) {
 }
 test("Codex receives scoped project context; streams and tool events are archived", async (t) => {
   const { store, agent, calls } = fixture(t);
-  const page = store.create({ title: "测试项目", kind: "project" });
+  const page = store.create({ title: "测试项目", kind: "project", modules: [{ title: "开发规范", content: "规划规范测试：保持无障碍" }, { title: "参考项目", content: "https://example.com" }] });
   const session = await agent.start(
     page.id,
     { key: "card", label: "金额卡片", selector: "#amount" },
@@ -34,6 +34,8 @@ test("Codex receives scoped project context; streams and tool events are archive
   );
   const request = calls.find((c) => c.method === "turn/start");
   assert.ok(request.params.input[0].text.includes("#amount"));
+  assert.ok(request.params.input[0].text.includes("规划规范测试：保持无障碍"));
+  assert.ok(request.params.input[0].text.includes("https://example.com"));
   assert.equal(calls[0].params.cwd, page.rootPath);
   agent.receive({
     method: "item/agentMessage/delta",

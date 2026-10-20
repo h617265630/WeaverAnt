@@ -6,6 +6,7 @@ import { ProjectSidebar } from "./project-sidebar";
 import { TodoPanel } from "./todo-panel";
 import { DevelopmentReports } from "./development-reports";
 import { RegionNavigator } from "./region-navigator";
+import { DesignSuggestions } from "./design-suggestions";
 
 export function ChatPane({
   session,
@@ -23,6 +24,7 @@ export function ChatPane({
   inputPlaceholder,
   composerActions,
   autoGrow = false,
+  designSuggestions = false,
 }) {
   const [text, setText] = useState(initialText),
     [sending, setSending] = useState(false),
@@ -111,6 +113,10 @@ export function ChatPane({
       {session?.error && !error && (
         <div className="agent-error">{session.error}</div>
       )}
+      {designSuggestions && <DesignSuggestions disabled={busy || sending} onChoose={(prompt) => {
+        setText((previous) => previous.trim() ? `${previous}\n\n${prompt}` : prompt);
+        input.current?.focus();
+      }} />}
       <form className="composer" onSubmit={submit}>
         <textarea
           ref={input}
@@ -630,6 +636,7 @@ export function Development({ pageId, initialSessionId, onOpenSidebar }) {
             <ChatPane
               key="local-project-composer"
               composerOnly
+              designSuggestions
               inputPlaceholder={local.anchor.kind === "project-text" ? "描述要怎样修改选中的文字或所在区域…" : "描述要怎样修改这个区域…"}
               session={sessions[local.sessionId]}
               stream={streams[local.sessionId]}

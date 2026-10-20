@@ -7,6 +7,7 @@ import { ResourcePanel } from "./resource-panel";
 import { HighlightPanel } from "./highlight-panel";
 import { ProjectSidebar } from "./project-sidebar";
 import { TodoPanel } from "./todo-panel";
+import { ProjectPlanning } from "./project-planning";
 
 export function PageView({ pageId, initialTab = "overview" }) {
   const { state, refresh, notify, setModal, createProject } = useWB();
@@ -56,6 +57,7 @@ export function PageView({ pageId, initialTab = "overview" }) {
   if (!detail) return <div className="loading">正在打开内容…</div>;
   const { page, records, sessions, versions, events } = detail;
   const ManagementContainer = page.kind === "question" ? "aside" : "div";
+  const PlanningContainer = page.kind === "project" ? ProjectPlanning : React.Fragment;
   const save = async (patch, label = "已保存") => {
     try {
       await api(
@@ -342,7 +344,7 @@ export function PageView({ pageId, initialTab = "overview" }) {
         </div>
         {page.kind === "question" && <nav className="tabs">
           {[
-            ["overview", "项目概览"],
+            ["overview", "项目规划"],
             ["resources", "资源"],
             ["highlights", "重点"],
             ["records", "原始记录"],
@@ -370,8 +372,9 @@ export function PageView({ pageId, initialTab = "overview" }) {
         {tab === "overview" && (
           <div className="management-layout">
             <div>
+              <PlanningContainer {...(page.kind === "project" ? { page, onSave: (patch) => save(patch, "项目规划已保存") } : {})}>
               {page.modules.length ? (
-                page.modules.map((module) => (
+                page.modules.filter((module) => !(page.kind === "project" && module.type === "text" && ["第一版范围", "开发规范", "参考项目"].includes(module.title))).map((module) => (
                   <section className="module" key={module.id}>
                     <div className="module-head">
                       <h3>{module.title}</h3>
@@ -437,52 +440,11 @@ export function PageView({ pageId, initialTab = "overview" }) {
                   description="添加模块，或者让 Codex 通过 WB 工具生成页面内容。"
                 />
               )}
-              <Button icon="plus" onClick={() => editModule()}>
+              </PlanningContainer>
+              {page.kind !== "project" && <Button icon="plus" onClick={() => editModule()}>
                 添加内容模块
-              </Button>
-              {page.kind === "project" &&
-                sessions.some((s) => s.messages.length) && (
-                  <section
-                    className="module"
-                    style={{ marginTop: 24 }}
-                    aria-label="之前的开发对话"
-                  >
-                    <div className="module-head">
-                      <h3>之前的开发对话</h3>
-                      <span className="tag">原始记录</span>
-                    </div>
-                    {sessions
-                      .filter((s) => s.messages.length)
-                      .slice(0, 3)
-                      .map((s) => (
-                        <div
-                          key={s.id}
-                          className="project-conversation-preview"
-                        >
-                          <strong>
-                            {s.anchorKey === "global"
-                              ? "全局开发"
-                              : `局部 · ${s.anchor.label || s.anchorKey}`}
-                          </strong>
-                          {s.messages.slice(-2).map((message) => (
-                            <p key={message.id}>
-                              <small>
-                                {message.role === "user" ? "你" : "Codex"}{" "}
-                                ·{" "}
-                              </small>
-                              {message.text.length > 350
-                                ? `${message.text.slice(0, 350)}…`
-                                : message.text}
-                            </p>
-                          ))}
-                          <Button quiet small onClick={() => showSession(s)}>
-                            查看完整对话
-                          </Button>
-                        </div>
-                      ))}
-                  </section>
-                )}
-              {!!page.updates?.length && (
+              </Button>}
+              {page.kind !== "project" && !!page.updates?.length && (
                 <>
                   <div className="section-heading">
                     <h2>同步记录</h2>

@@ -8,11 +8,12 @@ import {
   realpathSync,
   cpSync,
 } from "node:fs";
-import { resolve, join, extname, dirname, sep } from "node:path";
+import { resolve, join, extname, dirname, basename, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Store } from "./store.mjs";
 import { Agents } from "./agents.mjs";
 import { renderPage, escapeHtml } from "./render.mjs";
+import { chooseProjectDirectory, validateLocalProject } from "./local-project.mjs";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const contentTypes = {
@@ -235,6 +236,27 @@ export async function startServer({
           const page = store.create(await body(req));
           broadcast({ type: "state-changed" });
           return json(res, page, 201);
+        }
+        if (path === "/api/local-projects/choose" && req.method === "POST") {
+          return json(res, await chooseProjectDirectory());
+        }
+        if (path === "/api/local-projects/open" && req.method === "POST") {
+          const input = await body(req);
+          let rootPath;
+          try { rootPath = validateLocalProject(input.rootPath, [ROOT, store.directory]); }
+          catch (error) { return json(res, { error: error.message }, 400); }
+          const existing = store.pages().find((page) => {
+            try { return page.kind === "project" && realpathSync(page.rootPath) === rootPath; }
+            catch { return false; }
+          });
+          const page = existing || store.create({ kind: "project", rootPath,
+            title: String(input.title || "").trim() || basename(rootPath),
+            summary: "继续开发已有本地 Web 项目，保留现有代码与结构。",
+            modules: [{ title: "项目目标", content: "在现有项目基础上继续开发，保留已有功能与用户改动。" }],
+          });
+          scan(page);
+          broadcast({ type: "state-changed" });
+          return json(res, { page, reused: Boolean(existing) }, existing ? 200 : 201);
         }
         if (path === "/api/demo" && req.method === "POST") {
           const page = store.create({

@@ -33,7 +33,7 @@ export function Sidebar({
   onClose,
   onNavigate,
 }) {
-  const { state, createProject } = useWB();
+  const { state, createProject, openLocalProject } = useWB();
   const [projectsOpen, setProjectsOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [tasksOpen, setTasksOpen] = useState(true);
@@ -65,6 +65,13 @@ export function Sidebar({
           <Icon name="edit" />
           <span>新对话</span>
           <Icon name="plus" />
+        </button>
+        <button
+          className="nav-link"
+          onClick={() => { openLocalProject(); onNavigate(); }}
+        >
+          <Icon name="folder" />
+          <span>打开本地 Web 项目</span>
         </button>
         <button
           className="nav-link"

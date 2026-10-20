@@ -73,6 +73,7 @@ export function Modal({ title, children, onClose }) {
   return (
     <dialog
       ref={ref}
+      aria-label={title}
       onCancel={(e) => {
         e.preventDefault();
         onClose();

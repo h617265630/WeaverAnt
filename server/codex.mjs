@@ -241,6 +241,7 @@ export class CodexAgent extends EventEmitter {
       const context = {
         project: page.title,
         summary: page.summary,
+        planning: isProject ? page.modules.filter((m) => ["项目目标", "第一版范围", "开发规范", "参考项目", "开发计划"].includes(m.title)) : undefined,
         pageId: page.id,
         scope:
           session.anchorKey === "global"

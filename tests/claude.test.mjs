@@ -49,6 +49,17 @@ test("Claude streams, persists and resumes its own session without permission by
   mock.calls[1].child.emit("close", 130);
   assert.equal(store.sessionById(session.id).status, "interrupted");
 });
+test("Claude receives saved project standards and reference material", async (t) => {
+  const store = fixture(t), mock = transport();
+  const agent = new ClaudeAgent(store, { binary: "test-claude", spawnProcess: mock.spawnProcess });
+  const page = store.create({ title: "规划测试", kind: "project", modules: [{ title: "开发规范", content: "先测试再交付" }, { title: "参考项目", content: "https://example.com" }] });
+  await agent.start(page.id, { key: "global" }, "实现第一版");
+  const prompt = mock.calls[0].child.stdin.read().toString();
+  assert.match(prompt, /先测试再交付/);
+  assert.match(prompt, /https:\/\/example.com/);
+  agent.close();
+});
+
 test("Claude errors, permission denials and shutdown preserve truthful state", async (t) => {
   const store = fixture(t), mock = transport();
   const agent = new ClaudeAgent(store, { binary: "test-claude", spawnProcess: mock.spawnProcess });
