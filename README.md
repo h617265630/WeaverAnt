@@ -1,132 +1,244 @@
-# WB Studio · 交互式 AI 工作空间
+# WeaverAnt
 
-React 实现的本地优先 MVP。首页是 Entry 入口：左侧展示项目、任务和聊天历史，中央只有开始聊天/任务的窗口。发送第一条消息才创建独立记录及对应 WB 管理页；点击侧边栏条目进入对应 WB，查看原有对话并继续推进。Codex 提供模型、Agent 与工具能力，WB 提供交互界面、资料管理和持续记录。
+**A page-first AI workspace for conversations, project planning, and assisted development.**
 
-## 启动
+Turn a conversation into a workspace you can navigate, edit, and build in—not just a transcript you scroll through.
 
-项目管理页与开发窗口均提供独立可折叠的项目内部侧边栏。Todo 栏目复用项目 tasks 模块，支持添加、编辑、完成、筛选和确认删除；开发窗口可直接查看 Todo，保留底部开发聊天和预览状态。任务修改保存到 SQLite 并形成版本，使用版本号冲突检查保护并发修改。
+> Local-first MVP built with React and Node.js. The current interface uses Chinese labels and still refers to the workspace as **WB / WB Studio**. WeaverAnt is the project's name.
 
-需要 Node.js **22.13+**（当前环境为 22.22）及已登录的本机 Codex 或 Claude Code。依赖已经安装，进入此项目目录执行：
+## Why move beyond a chat window?
+
+Traditional chat windows are useful for asking questions, but become harder to work with as a conversation grows:
+
+- **Important information gets buried.** Requirements, decisions, links, and explanations are scattered throughout a long transcript.
+- **Follow-ups derail the main thread.** Discussing one paragraph mixes a new topic into the original conversation.
+- **Replies are not project state.** An answer does not automatically become a plan, task list, or reusable reference.
+- **Local changes are difficult to describe.** Selecting a card is easier than explaining “the second card below the heading.”
+- **Context is fragmented across tools.** Research, conversations, project management, and implementation often live in separate places.
+
+WeaverAnt explores a different approach: **use generated web pages and structured web interfaces as the working surface for AI conversations and projects.**
+
+## What is WeaverAnt?
+
+WeaverAnt is an interactive AI workspace and development assistant. Start with a question or idea, organize the resulting knowledge in a web workspace, and move into planning and implementation when you are ready.
+
+It connects to your local **Codex or Claude Code** installation for reasoning and tool execution. WeaverAnt provides the interaction layer, project context, and persistent records—not a new foundation model.
+
+There are two distinct parts:
+
+| Part | Purpose |
+| --- | --- |
+| **WB workspace** | Manage conversations, research, requirements, plans, tasks, resources, and original records. |
+| **Target project** | The actual website or software you are building, with its own files and development preview. |
+
+### What “real-time generated web interaction” means
+
+The product direction is to make AI-generated pages an interactive working environment. The current implementation has three complementary layers:
+
+1. **Streaming conversations:** replies appear incrementally as headings, paragraphs, lists, tables, and code blocks. You can read while the AI is responding, without waiting for a complete HTML document.
+2. **Editable workspace pages:** users and AI tools can update modules, tasks, links, and project material. AI can also provide custom HTML pages for isolated display. Knowledge pages can be exported as standalone HTML.
+3. **Interactive project previews:** generated or imported web projects appear above a development chat dock. Select text or a page region and ask the AI to change that specific part.
+
+**Not every response generates a new standalone application.** Conversation formatting uses the reply's existing structure, not another model call to rewrite it. Chat replies are not executed as arbitrary HTML or JavaScript. Project previews reflect actual files and build output; target-project development servers and hot reload are not automatically managed.
+
+## Quick start
+
+### Requirements
+
+- **Node.js 22.13 or newer** and npm.
+- A locally installed and authenticated **Codex or Claude Code** for real AI requests.
+- A modern browser. Automated browser tests are configured for Google Chrome.
+
+You can explore management features and the bundled demo without sending an AI request.
+
+### Install and run
 
 ```sh
+git clone https://github.com/h617265630/WeaverAnt.git
+cd WeaverAnt
+npm ci
 npm start
 ```
 
-打开 **http://127.0.0.1:4317**。`4318` 是独立的项目预览源，不是管理入口。按 Ctrl+C 停止。
+Open **http://127.0.0.1:4317**.
 
-「连接与设置」可选择新会话的默认 AI（Codex / Claude Code）。Claude Code 自动检测本机 CLI 或 VS Code 插件内置程序，也可填写完整可执行文件路径；复用本机登录和配置，不读取或复制凭证。设置持久化在 SQLite；已有会话保持原 AI。Claude 使用 CLI stream-json 流式回复并加载 WB MCP，支持续聊、停止和子对话。当前不桥接 Claude 的交互式工具审批：未授权命令与文件修改可能被拒绝，请在 Claude Code 中配置必要权限；WB 不使用跳过权限参数。真实模型请求会使用你的账户额度，自动测试只使用模拟响应。
+Keep the terminal running; press **Ctrl+C** to stop. The start command builds WeaverAnt and its bundled demo, then starts the local service. It does not build imported projects.
 
-选中文字后可在 select-dock 点击「保存信息」，在「资料与管理 → 重点」点击标签查看保存的全文。主对话和子对话均支持，数据持久化且同消息的相同选段去重。项目开发页的输入框与主对话共用圆角、底部工具栏、圆形发送/停止与自动增高样式。预览左侧通过「AI 汇报 / Todo / 文件目录」标签切换内容，切换保留任务草稿、目录展开状态和右侧预览；AI 回复持续接收，底部「最新回复」切回汇报并滚动到底部。标签支持左右方向键及 Home / End。
+- **4317:** main workspace interface.
+- **4318:** separate preview origin for embedded project pages.
 
-新电脑先执行 `npm ci`。开发 WB 源码时运行 `npm run dev`：保存 React 文件后自动重新构建，刷新浏览器查看。没有使用云端部署、云数据库或额外的模型 API Key。
+### Connect an AI agent
 
-Codex 默认从 PATH 查找，也会尝试发现 VS Code / Insiders 扩展内的二进制。若未找到，可自行指定：
+Open **Connection & Settings (`连接与设置`)** in the main sidebar:
+
+1. Choose Codex or Claude Code as the default provider for new conversations.
+2. Check the local connection. Complete authentication in the provider's own application if necessary.
+3. Return to WeaverAnt and send a message.
+
+WeaverAnt attempts to discover supported executables locally, including supported VS Code extension locations. Claude Code also has a configurable executable path. You can explicitly set a binary when starting:
 
 ```sh
-WB_CODEX_BIN="/完整路径/codex" npm start
+WB_CODEX_BIN="/absolute/path/to/codex" npm start
+# Or:
+WB_CLAUDE_BIN="/absolute/path/to/claude" npm start
 ```
 
-可用 `PORT=4417 WB_PREVIEW_PORT=4418 npm start` 更换端口；`WB_DATA_DIR` 可指定另一个数据目录。不要同时启动两个管理服务操作同一份数据。
+Existing conversations retain their provider; changing the default does not migrate them. Real requests use your provider account and may consume quota. These local adapters do not require a separate model API key in WeaverAnt.
 
-## 体验流程
+## How to use WeaverAnt
 
-1. **Entry 欢迎页**：选择「开始聊天」或「开始任务」，输入第一条消息。系统创建独立 WB 和左侧历史/任务条目，并进入该 WB。打开入口或点击「新对话」不会产生空记录，也不会清空之前的聊天。
-2. **历史与管理**：侧边栏分为「项目、任务、历史对话」，点击条目进入对应 WB 管理页。聊天/任务 WB 顶部直接展示原来的聊天并允许继续；项目 WB 展示既有开发对话摘要，可查看完整原文。历史按今天、昨天、过去 7 天和更早分组；支持收起分区、滚动和移动端抽屉。搜索可查找完整对话、资料和模块，不调用模型。
-3. **明确启动项目**：例如「确认开始一个 React 记账 App，先实现添加收支和概览」。Agent 调用创建项目工具后，页面进入目标项目的开发窗口，并在新项目目录中执行初始开发指令。也可点侧边栏「项目」旁的加号手动创建空项目。
-4. **全局开发**：目标项目上方为实际页面预览，下方固定聊天框接收整体开发指令。即使项目还没有代码，聊天框也立即可用。
-5. **局部开发**：直接在预览正文中选中文字，松开鼠标后弹出附近的小聊天框；或者点「点选局部」再点击卡片、按钮等元素区域。选中文字、元素文本、选择器、HTML 片段和可选源码标记作为上下文传给当前 AI。文字选段与元素区域使用独立会话，同一选段可续聊；回复同步进入左侧汇报。点击外部或按 Esc 关闭小窗，不中断执行。输入框和可编辑区域内的文字选择不触发此功能，预览注入层不会写入交付代码。
-6. **WB 管理**：管理需求、方案、任务、原始记录、项目文件、同步设置和历史版本。用户可以直接修改文字、任务、链接；并发旧版本不会覆盖新内容。
+### 1. Start a conversation or task
 
-不想立即使用模型额度，可以进入「全部项目」，点击「体验记账 App 示例」。示例是真实的 React 页面，能添加和筛选收支；金额仅为示例，数据保存在当前浏览器。点选和管理功能不用模型；发送聊天则会真实使用你的 Codex 账户。
+Choose a conversation or task on the entry page and send your first message. WeaverAnt creates a dedicated workspace and sidebar history entry only when you send—an empty chat does not become a record.
 
-## 六个核心
+For example:
 
-| 核心 | 作用 | 主要代码 |
-| --- | --- | --- |
-| WB 首页与知识页面 | 总聊天、问答、调研资料、全文查找、静态导出 | `src/hub-chat.jsx`、`src/page.jsx`、`src/search.jsx` |
-| 项目工作空间 | 创建/绑定目标目录、启动开发会话、展示成果 | `server/store.mjs`、`src/development.jsx` |
-| 全局与局部交互 | 底部聊天、页面点选、元素上下文、独立持续会话 | `src/development.jsx`、`public/overlay.js` |
-| Agent 连接层 | Codex App Server、流式回复、停止、操作确认 | `server/codex.mjs` |
-| 内容与记忆 | SQLite 原始对话、协议事件、模块、资料、版本 | `server/store.mjs`、`server/render.mjs` |
-| 同步与工具层 | 文件同步、分类自动/手动设置、AI 管理资料的 MCP 工具 | `server/index.mjs`、`server/mcp.mjs` |
+> Help me research a personal expense tracker. Compare possible workflows and identify the smallest useful first version.
+
+The response streams into a structured reading area. Conversations, follow-ups, and supporting material have separate places instead of sharing one endless column.
+
+### 2. Branch from a specific piece of information
+
+Select text in a completed message to open the **select-dock** nearby. You can ask a focused question, request related resources, or save the selection as a highlight.
+
+Follow-up replies appear in a separate response area with labels connecting them to their source. You can select text inside a follow-up and branch again without losing the main discussion.
+
+The main **float-dock** stays near the bottom of the conversation. **Enter** sends; **Shift+Enter** inserts a new line. The interface follows streaming replies unless you scroll up to read history.
+
+### 3. Organize knowledge and references
+
+Use **Materials & Management (`资料与管理`)** to access content modules, resources, highlights, and original records.
+
+- Supported links from saved messages and completed tool results are collected into Resources, deduplicated, and associated with their source.
+- Saved selections appear under **Highlights (`重点`)**.
+- Edit workspace content directly or search saved material without an extra model call.
+- Original messages remain available; summaries do not replace them.
+- Export knowledge pages as standalone HTML for viewing without the WeaverAnt service.
+
+Resources are not automatically downloaded or verified. Structured organization depends on user edits or agent tool calls—not every message automatically becomes a module. Search capabilities depend on the tools available to the connected agent.
+
+### 4. Turn an idea into a project
+
+Use the **+** beside Projects or **Start Project (`启动项目`)** from a conversation workspace. Choose:
+
+- **Plan first:** define the initial scope, development standards, and reference projects.
+- **Start directly:** enter development and refine the requirements as you build.
+
+In **Project Planning (`项目规划`)**, select common standards or write your own: preferred stack, visual style, accessibility, testing expectations, and dependency constraints. Record reference projects and explain what to borrow—and what not to copy.
+
+Saved planning material is included in subsequent project development requests. You can return to planning at any time.
+
+### 5. Build through the page
+
+The development window combines a target-project preview, a fixed global chat dock, and panels for AI reports, Todo items, and the file tree.
+
+Use the global dock for project-wide instructions:
+
+> Build an expense tracker with an overview and an add-transaction form. Follow the saved project standards.
+
+For a local change:
+
+1. Select text, use **Select Region (`点选局部`)**, or double-click a supported page area.
+2. Adjust the target using parent/child controls or the DOM hierarchy path.
+3. Enter an instruction in the local select-dock.
+4. Read the response in the left-hand **AI Reports (`AI 汇报`)** panel.
+
+WeaverAnt passes the selected text, selector, HTML excerpt, and available source markers as context. The agent edits actual project files. The selection overlay is injected by the preview environment, not written into the delivered app.
+
+The select-dock also offers **AI advice**, **color palettes**, and **UI component ideas**. Palette and component cards are built-in suggestions, not dynamically generated recommendations. Choosing one fills the input for review; you must send it before an agent request runs. AI advice uses the connected provider and appears in AI Reports.
+
+### 6. Continue an existing local project
+
+Choose **Open Local Web Project (`打开本地 Web 项目`)** in the main sidebar.
+
+Select a folder with the native chooser on macOS, or enter an absolute path. Choose the project root containing `index.html`, `dist/index.html`, or `package.json`.
+
+- WeaverAnt binds the original directory without copying it.
+- Opening does not install dependencies, execute project scripts, or automatically invoke AI.
+- Reopening the same resolved directory reuses its existing WB workspace.
+- Later development instructions operate on the original files. Use Git or another backup before making changes.
+
+**Importing successfully does not guarantee preview compatibility.** Static HTML and compatible build output are supported. Full-stack apps and root-relative asset paths need additional handling; see the limitations below.
+
+### Try the demo without an AI request
+
+Open **All Projects (`全部项目`) → Try the Expense Tracker Demo (`体验记账 App 示例`)**.
+
+The bundled demo is a working React page with sample transactions. Exploring it, selecting regions, and using management features does not require model quota. Sending a message does.
+
+## Project management and local data
+
+- **Todo:** add, edit, complete, filter, and delete tasks. Management and development views share the same task data.
+- **Files:** inspect the indexed project tree. A file changing does not automatically mean a task is complete.
+- **Records:** retain WB-created conversations and protocol events. Private VS Code chat history is not automatically imported; existing records can be pasted manually.
+- **Sync settings:** choose automatic or manual handling by category. Raw conversation capture is independent of summary synchronization.
+- **Workspace versions:** restore management content, not source code. The version panel is **not Git** and cannot undo target-project changes.
+
+| Location | Contents |
+| --- | --- |
+| `.wb-data/workspace.sqlite` | Workspaces, modules, conversations, records, events, and management versions. |
+| `.wb-data/projects/<project-id>/app/` | Default directory for a new target project. |
+| An imported project's original directory | Actual files of a bound local project. |
+
+Stop the service before backing up `.wb-data`. Back up externally bound directories separately. Runtime workspace data is excluded from this repository.
+
+## Architecture
 
 ```text
-Entry 入口 · 一个聊天/任务输入窗口
-  ├─ 第一条消息 → 独立聊天或任务 WB → 原始对话、内容模块、来源记录
-  ├─ 左侧聊天 / 任务 / 项目 → 对应 WB 管理页，查看已有聊天信息
-  └─ 确认项目 → 项目 WB → 项目专属开发窗口
-                 ├─ 目标项目预览
-                 ├─ 底部全局聊天
-                 └─ 元素附近局部聊天
-                         ↓
-                本地桥接 → Codex App Server → 目标项目文件
-                         ↓
-                原始对话 + WB 资料 / 方案 / 进度
+Conversation / task
+  → Structured web workspace
+  → Planning and project material
+  → Target-project preview + global/local instructions
+  → Local agent bridge → Codex or Claude Code → project files
+                       ↘ WB MCP tools → workspace updates
 ```
 
-WB 管理页与目标项目不是同一个产品页面。聊天和点选层由开发环境注入，不会写进最终交付给终端用户的记账 App。每个项目的管理数据独立，AI 可通过 `customHtml` 提供完全不同的专属页面；这些页面放在独立预览源中运行，管理数据仍存于共享内容层。
+| Layer | Main implementation |
+| --- | --- |
+| React workspace and project UI | `src/` |
+| Local API, previews, file synchronization | `server/index.mjs` |
+| Provider routing and adapters | `server/agents.mjs`, `server/codex.mjs`, `server/claude.mjs` |
+| SQLite content and version store | `server/store.mjs` |
+| Agent tools for workspace organization | `server/mcp.mjs` |
+| Injected selection and region navigation | `public/overlay.js` |
 
-## 数据与同步
+A local Node service is needed because a static browser page cannot launch agent processes, continuously access project files, or handle development approvals. The built interface does not require a Vite development server at runtime.
 
-### WB 的实时内容展示
-
-主对话、子对话回复和标签区采用视口内固定容器，各自内部滚动，不再由长回复撑长整页。主对话在发送后于容器内部自动跟随流式回复末尾；向上滚动阅读历史会暂停跟随，点击「最新回复」或发送新问题可恢复。侧栏和子对话独立滚动，不带动主对话。conversation-toolbar 不重复显示首问标题，首问保留在主对话消息中；消息去除「你的提问 / 你的追问 / AI 回复」等角色标签。
-
-C 区已保存的子对话消息同样支持选中文字继续提问或搜资源，可以逐层创建独立子对话。每层保存父会话标识、来源消息和层级；A 区按父子关系展示标签，下级提问默认收起，点击「展开下级提问」可逐层查看，点击标签定位对应回复，点击回复卡片「继续聊」打开追问窗口。折叠只影响标签，不卸载 C 区回复或中断生成；刷新后保留关联，展开状态重置。C 回复卡片标注来源，可查看上级。未完成的流式内容不作为新选段来源。底部悬浮聊天框桌面宽度不超过 720px，在主对话 B 区下方居中，随侧栏变化自动对齐；采用简洁圆角面板，右下角圆形发送 / 停止按钮，底部工具行保留「最新回复」。输入框随内容增高至 120px，手机端保持左右留白，不左移。
-
-全局「新对话 / 项目 / 历史」导航默认折叠。新建对话、进入对话管理页或目标项目开发页时自动收起；可通过顶部「打开侧边栏」手动展开，当前页面内的消息更新不会再次折叠。此行为不影响「资料与管理」内部侧栏。
-
-聊天和任务 WB 的输入框固定悬浮在主区域底部，支持发送、停止和跳到最新回复；Entry 入口保持居中的输入窗口。上方直接接收流式消息，以段落、标题、清单卡片、编号步骤、表格、引用和代码块展示，不等待整个回复或完整 HTML 生成。未闭合的代码块也会先显示已有内容。回复内容不作为 HTML/JS 执行，链接仅允许 HTTP/HTTPS。
-
-这是基于原文格式的增量展示，不是额外调用模型重写总结；没有格式的文字仍如实显示。每条回复顶部可查看原文，右上角小图标可复制，完整记录不会因布局改变而被改写。底部预留空间会随输入区高度调整，移动端和侧栏收起时也保持可用。
-
-聊天/任务 WB 的非聊天内容集中在 article 左侧的「资料与管理」内部侧栏，位于全局历史导航与对话内容之间，包含内容模块、资源、原始记录、版本历史及工作空间信息。切换栏目不会隐藏中间对话；桌面收起后保留 44px 窄条入口，点击或键盘 Enter 可重新展开，对话区随之扩宽；折叠保留当前栏目和资料。小屏通过顶部按钮打开覆盖式侧栏。
-
-conversation-main 内采用整页共用的 A／B／C 三列：A 为子对话标签，B 为主对话，C 集中展示选段追问回复；不再为每个 article 单独分栏。资料与管理侧栏独立于三列。选中 B 区已保存消息中的文字，直接出现聊天浮窗，可切换「提问 / 搜索相关资源」，回复实时进入 C 区。A 区标签显示引用内容和消息数，点击只定位原文与对应回复，不弹出浮窗；通过 C 区「继续聊」打开浮窗。窄屏改为纵向排列，保留三个区域的功能。引用文字、原消息 ID、内容块位置和独立会话一起保存，刷新后恢复；主聊天与选段消息按会话分流。仅选中文字不会创建数据库会话，首次发送时才保存。select-dock 内不展示引用块，但引用上下文仍保留；点击外部可关闭浮窗，关闭不停止回复；搜索结果链接归集到资源页。搜索能力取决于当前 AI 可用工具；尚未结束的流式片段暂不支持建立选段讨论。
-
-「资源」页从已持久化的对话、资源链接模块和已完成的搜索/浏览、MCP 工具返回中提取 HTTP/HTTPS 链接，按网址去重并保留来源。已有记录打开后也能归集，无需额外模型调用。它是原始记录的派生索引，刷新不丢失；不自动下载资源文件，不将链接视为已验证资料。工具未返回具体网址时不会猜测来源。
-
-- `.wb-data/workspace.sqlite`：管理内容、用户编辑版本、原文、会话和协议事件。不要提交到 Git。
-- `.wb-data/projects/<项目 ID>/app/`：默认目标项目目录，是真实可编辑的项目文件。也可绑定已有目录。
-- 自动保存 WB 自己创建的聊天；不会自动读取 VS Code 插件的旧私有会话。已有记录可以从「原始记录」粘贴导入。
-- 默认自动同步文件资料和会话摘要；进度/决策默认人工确认，可在每个项目的「同步设置」改为自动。关闭分类同步不会停止原始会话保存。
-- 文件变化会进入文件列表；任务是否完成需要用户或明确的工具更新，不能仅凭文件改变推断成功。文件扫描每 2 秒进行，忽略隐藏项、依赖和构建目录，当前上限 1,000 个文件、8 层深度。
-- 结构化整理由 Agent 调用 MCP 完成；不是每条消息都会被机械复制成模块。原始消息另行保留，不被摘要替代。
-- WB 版本恢复只恢复管理内容，不撤销目标代码。代码版本管理请在目标目录使用 Git。
-- 备份时先停服务，再完整复制 `.wb-data`；外部绑定目录需要单独备份。
-
-## 为什么有本地服务
-
-轻量问答可以导出为独立 HTML，双击即可查看，不需要前端开发服务。**浏览器本身不能启动 Codex 进程、持续读写目标项目和处理操作确认**，所以完整开发流程使用一个小型 Node 本地桥接服务。主界面是构建后的静态 React 文件，运行时不需要 Vite 开发服务器。
-
-两个端口均仅绑定 `127.0.0.1`。管理 API 检查随机令牌、Host 与 Origin；目标预览使用不同端口和 iframe，避免直接获得管理页的令牌。预览文件禁止访问隐藏文件、`node_modules` 和跳出目标目录的符号链接。这是单用户本地工具，不是可直接对公网暴露的多租户系统。
-
-发送开发指令可能读取项目、改文件、执行构建、联网并消耗账户额度。Codex 对需要确认的操作在页面弹窗询问；WB 不自动批准。底层工具、模型和额外 MCP 能力取决于你的 Codex 配置。对不可信项目，请先审查其脚本和依赖。
-
-## MCP 与已有 VS Code 聊天（可选）
-
-**WB 内置聊天不需要额外配置**：桥接进程通过启动参数载入 WB MCP，只影响该进程，不修改你的全局 Codex 配置。
-
-如果也希望在原 VS Code Codex 窗口里创建/更新 WB 页面，运行：
+## Configuration and development
 
 ```sh
-npm run config
+# Use different local ports.
+PORT=4417 WB_PREVIEW_PORT=4418 npm start
+
+# Use a different workspace data directory.
+WB_DATA_DIR="/absolute/path/to/workspace-data" npm start
+
+# Develop WeaverAnt's frontend.
+npm run dev
 ```
 
-将输出的配置按 [Codex 官方 MCP 说明](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)添加到你选择的配置文件，再在 Codex 中重新载入。工具包括 `wb_list_pages`、`wb_get_page`、`wb_create_page`、`wb_start_project`、`wb_update_page`、`wb_record`、`wb_sync_update`。网页与 MCP 必须使用同一个 `WB_DATA_DIR`。创建工具可离线保存数据；自动启动开发和实时刷新需要 WB 服务正在运行。
+The development command rebuilds WeaverAnt's frontend when files change; refresh the browser to see updates. Restart for server-side changes. This does not run the target project's development server. Do not run two instances against the same workspace database.
 
-底层使用 [Codex App Server](https://learn.chatgpt.com/docs/app-server)，而不是搬运 VS Code 插件的原始聊天面板。WB 自己绘制 React 聊天界面，通过协议调用同一类 Codex 能力。该接口随 Codex 版本演进；本机验证版本为 `0.162.0-alpha.17.2`。
+The built-in bridge supplies WB MCP configuration to its own agent processes without requiring global configuration changes. For optional use from an external Codex client, `npm run config` prints a configuration snippet to review and add to that client. Both processes must use the same data directory. The helper prints the repository's default `.wb-data` path; adjust it if using a custom location.
 
-## 当前边界
+## Safety
 
-- 实际接入的是 **Codex**；Claude Code 尚未实现，不提供假的 CC 开关。
-- 项目预览支持静态 HTML，以及构建到 `dist/` 的 React/Vite Web 项目。Vite 请设置 `base: './'`，或执行 `vite build --base=./`。Next.js 服务端、全栈后端、原生应用运行器尚未接入。
-- 点选提供真实 DOM 上下文；`data-ai-id` / `data-ai-source` 标记可提高定位稳定性。任意代码库里的 DOM 到源码精确映射不是自动保证的，组件大改后可能产生新局部会话。
-- 同一项目一次只允许一个开发任务，避免全局和局部并发改同一文件；不同项目可独立运行。
-- 专属自定义 HTML 目前是隔离展示层，不自动成为带数据写权限的插件。管理内容通过原生编辑界面或 MCP 修改。
-- 目前是本地 MVP：没有团队权限、云端发布、完整二进制文件解析和自动化硬件开发环境。
+Both services bind to `127.0.0.1`. The management API checks a local token, Host, and Origin; target previews use a separate origin. This is a single-user local tool, not a hardened sandbox for hostile projects or a public multi-tenant service.
 
-## 验证
+AI requests may read files, edit code, run commands, access the network, and consume account quota. Review unfamiliar scripts before executing them.
+
+Codex approvals are surfaced in the interface and are not automatically approved. Claude Code interactive approvals are not currently bridged, so operations without permission may be denied. The adapter does not use permission-bypass flags.
+
+## Current limitations
+
+- **Root-relative preview assets:** builds referencing `/assets/...` can display a blank page because the static preview serves projects under `/app/<project-id>/`. Relative build assets, such as those produced with Vite's `base: './'`, fit this structure; application routes and API URLs may still need separate handling. Automatic path adaptation remains unfinished.
+- **No automatic target-project runtime:** importing a folder does not start Vite, a backend, or a database. Server-rendered and full-stack services are not automatically orchestrated or proxied.
+- **No guaranteed DOM-to-source mapping:** selections provide context, not an exact source-editor mapping. Stable `data-ai-id` and `data-ai-source` attributes can improve targeting.
+- **One active agent task per project:** global and local requests share a lock to avoid simultaneous edits.
+- **Custom HTML is a presentation layer:** it does not automatically gain workspace write permissions. Native editors and MCP tools handle changes.
+- **Local-first MVP:** no team permissions or integrated cloud deployment.
+
+## Checks and tests
 
 ```sh
 npm run check
@@ -135,12 +247,10 @@ npm test
 npm run test:browser
 ```
 
-浏览器测试使用本机 Chrome 和**明确隔离的测试 Agent**，不消耗真实模型额度；覆盖首页聊天、创建项目、记账示例、局部聊天、持久化、编辑、导出、搜索与移动布局。没有安装 Chrome 时需先安装，或调整 `playwright.config.mjs` 的浏览器设置。
+Browser tests use Google Chrome as configured in `playwright.config.mjs`. Automated tests use isolated temporary workspaces and simulated agents, not real model quota. They cover conversations, scoped interactions, project workflows, persistence, and local imports.
 
-可选真实连接测试（会使用现有 Codex 账户执行一次只读工具调用）：
+An optional real Codex smoke test is available with `node scripts/smoke-codex.mjs`. Unlike the simulated tests, it invokes your installed agent and may consume account quota.
 
-```sh
-node scripts/smoke-codex.mjs
-```
+---
 
-测试使用独立临时目录，不向正式工作空间写入示例或测试对话。
+**WeaverAnt: move from talking about a project to working inside an interactive page built around it.**
